@@ -1,0 +1,14 @@
+
+exe nodemanager 
+	: NodeManager.cpp  /pluto/common//plutcom /pluto/common//plutlog
+	;
+
+exe pladmin 
+	: NodeAdmin.cpp  /pluto/common//plutcom /pluto/common//plutlog
+	;
+exe plmembership 
+	: DummyProc.cpp  /pluto/common//plutcom /pluto/common//plutlog
+	;
+exe plstore 
+	: DummyProc.cpp  /pluto/common//plutcom /pluto/common//plutlog
+	;
