@@ -1,0 +1,7 @@
+project user-config ;
+
+import boost ;
+boost.use-project 1.62 ;
+
+use-project /pluto/common : src/common ;
+
