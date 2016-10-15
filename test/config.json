@@ -1,0 +1,12 @@
+{
+   "IPCKEY": 555555,
+   "protocol_param": {
+        "TFAIL"  : 5,
+        "TREMOVE": 2,
+        "Name"   : "GOSSIP",
+        "GOSSIP" : {
+            "B" : 3
+        }
+    }
+}
+
