@@ -4,8 +4,12 @@
 
 
 project 
-    : usage-requirements <include>include ;
+    : usage-requirements <include>include <include>./ ;
 
-lib plutcom : [ glob *.cpp : log.cpp ] /pluto/common//plutlog ;
+lib plutcom 
+             : [ glob *.cpp : log.cpp ] /pluto/common//plutlog 
+             : <library>/boost//system <threading>multi
+             ;
+
 lib plutlog : log.cpp ;
 

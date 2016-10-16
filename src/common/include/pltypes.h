@@ -1,15 +1,13 @@
 /**
  *******************************************************************************
- * stdinclude.h                                                                *
+ * pltypes.h                                                                   *
  *                                                                             *
- * Standard hearder file:                                                      *
- *   - defines constants for project                                           *
- *   - includes header files used by all source                                *
+ * Types :                                                                     *
  *******************************************************************************
  */
 
-#ifndef _STD_INCLUDE_H_
-#define _STD_INLCUDE_H_
+#ifndef _PL_TYPES_H_
+#define _PL_TYPES_H_
 
 
 /**
@@ -17,15 +15,6 @@
  * Headers                                                                     *
  *******************************************************************************
  */
-#include <unistd.h>
-#include <errno.h>
-
-#include <string.h>
-#include <stdlib.h>
-
-#include "pltypes.h"
-#include "log.h"
-#include "config.h"
 
 /**
  *******************************************************************************
@@ -33,24 +22,26 @@
  *******************************************************************************
  */
 
-#define KV_RING_DEF_SIZE 512   // The ring size, that the maximum number of node 
-                               // supported by store
-/* Membership protocol parameters */
-#define MEM_PROT_DEF_TFAIL     5
-#define MEM_PROT_DEF_TREMOVE   20
-#define MEM_PROT_DEF_NAME      "GOSSIP" 
+/**
+ *******************************************************************************
+ * Types                                                                       *
+ *******************************************************************************
+ */
 
-#define MEM_PROT_DEF_GOSSIP_B  3
+typedef long long int64;
+typedef int       int32;
+typedef short     int16;
+typedef char      int8;
 
-/* Environment variable names */
-#define ENV_NM_BASE_IPCKEY    "PLUTO_IPCKEY" 
-
+typedef unsigned long long uint64;
+typedef unsigned int       uint32;
+typedef unsigned short     uint16;
+typedef unsigned char      uint8;
 /**
  *******************************************************************************
  * Function declaractions                                                      *
  *******************************************************************************
  */
-void daemonize(const char *cmd);
 
-#endif // _STD_INCLUDE_H_
+#endif // _PL_TYPES_H_
 
