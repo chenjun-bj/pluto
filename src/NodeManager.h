@@ -18,6 +18,8 @@
  *******************************************************************************
  */
 #include "stdinclude.h"
+#include "memberlist.h"
+#include <string>
 
 /*
  *******************************************************************************
@@ -50,11 +52,18 @@ private:
     int start_store();
     pid_t start_process(const char* cmd);
 
+    void cleanup();
+
 private:
     pid_t  m_pid_membershipproc;
     pid_t  m_pid_storeproc;
 
     volatile bool   m_b_running;
+
+    void * m_addr;
+    int    m_shmid;
+
+    MemberList m_shm;
 };
 
 void register_signal(int signo, 

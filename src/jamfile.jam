@@ -5,6 +5,7 @@ exe nodemanager
 
 exe pladmin 
 	: NodeAdmin.cpp  /pluto/common//plutcom /pluto/common//plutlog
+        : <threading>multi
 	;
 exe plmembership 
 	: DummyProc.cpp  /pluto/common//plutcom /pluto/common//plutlog
