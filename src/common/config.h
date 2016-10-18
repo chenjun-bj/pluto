@@ -15,7 +15,9 @@
  *******************************************************************************
  */
 #include <sys/ipc.h>
+
 #include <string>
+#include <vector>
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -42,6 +44,8 @@ class ConfigPortal {
 private:
     ConfigPortal();
 public:
+    typedef std::pair<std::string, unsigned short> IPAddr;
+
     virtual ~ConfigPortal() ;
 
     bool load(const std::string & filename);
@@ -49,6 +53,13 @@ public:
     key_t get_ipckey() const;
 
     long get_ringsize() const;
+
+    /**/
+    std::string get_logpath() const;
+
+    std::vector<IPAddr> get_joinaddress() const;
+    std::string get_bindip() const;
+    unsigned short get_bindport() const;
 
     /**
      * Protocal parameters

@@ -1,5 +1,14 @@
 {
    "IPCKEY": 555555,
+   "LOGPATH" : "/var/log/pluto",
+   "BINDADDR": {
+             "IP" : "127.0.0.1",
+             "PORT" : 22345
+        } ,
+   "JOINADDR" : [
+            { "IP" : "127.0.0.1", "PORT" : 22346 },
+            { "IP" : "127.0.0.1", "PORT" : 22347 }
+        ],
    "protocol_param": {
         "TFAIL"  : 5,
         "TREMOVE": 2,
