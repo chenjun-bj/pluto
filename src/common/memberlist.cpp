@@ -77,7 +77,7 @@ key_t  MemberList::get_ipckey() const
     return -1;
 }
 
-bool  MemberList::set_running_status(uint32 status)
+bool  MemberList::set_running_status(uint16 status)
 {
     if ((status != PL_RUNNING_ST_RUN) && (status != PL_RUNNING_ST_STOP)) {
         return false;
@@ -89,10 +89,43 @@ bool  MemberList::set_running_status(uint32 status)
     }
     return false;
 }
-uint32 MemberList::get_running_status() const
+
+uint16 MemberList::get_running_status() const
 {
     if (m_paddr) {
         return m_paddr->running_status;
+    }
+    return -1;
+}
+
+bool  MemberList::set_membership_status(uint8 status)
+{
+    if (valid_child_status(status) && m_paddr) {
+        m_paddr->st_member = status;
+        return true;
+    }
+    return false;
+}
+uint8 MemberList::get_membership_status() const
+{
+    if (m_paddr) {
+        return m_paddr->st_member;
+    }
+    return -1;
+}
+
+bool  MemberList::set_store_status(uint8 status)
+{
+    if (valid_child_status(status) && m_paddr) {
+        m_paddr->st_store = status;
+        return true;
+    }
+    return false;
+}
+uint8 MemberList::get_store_status() const
+{
+    if (m_paddr) {
+        return m_paddr->st_store;
     }
     return -1;
 }
@@ -153,5 +186,17 @@ uint64 MemberList::get_ring_size() const
         return m_paddr->ring_size;
     }
     return -1;
+}
+
+bool  MemberList::valid_child_status(uint8 status) const
+{
+    if ((status == PL_CHILD_ST_NONE) || 
+        (status == PL_CHILD_ST_INIT) ||
+        (status == PL_CHILD_ST_RUN)  ||
+        (status == PL_CHILD_ST_STOP) ||
+        (status == PL_CHILD_ST_FAIL)) {
+        return true;
+    }
+    return false;
 }
 

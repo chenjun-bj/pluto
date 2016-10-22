@@ -23,7 +23,7 @@
 #include <sys/shm.h>
 #include <signal.h>
 #include <syslog.h>
-
+#include <pthread.h>
 #include <errno.h>
 #include <string.h>
 
@@ -90,10 +90,57 @@ int NodeManager::initialize()
 
     if (!m_shm.attach(m_addr)) {
         syslog(LOG_ERR, "Member list attach failed\n");
+        cleanup();
+        return -1;
+    }
+
+    m_shm.set_ipckey(ipckey);
+    m_shm.set_ring_size(ring_size);
+
+    /* Initialize lock */
+    if (init_lock()!=0) {
+        cleanup();
         return -1;
     }
 
     m_shm.set_running_status(PL_RUNNING_ST_RUN);
+
+    return 0;
+}
+
+int NodeManager::init_lock()
+{
+    pthread_mutex_t * plock = m_shm.get_mutex();
+    if (plock == nullptr) {
+        syslog(LOG_ERR, "Mutex address null\n");
+        return -1;
+    }
+
+    pthread_mutexattr_t attr;
+    if (pthread_mutexattr_init(&attr) != 0) {
+        syslog(LOG_ERR, "Mutex attribute init failed, errno=%d:%s\n",
+                        errno,
+                        strerror(errno));
+        return -1;
+    }
+    if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) != 0) {
+        syslog(LOG_ERR, "Mutex attribute set PTHREAD_MUTEX_RECURSIVE failed, errno=%d:%s\n",
+                        errno,
+                        strerror(errno));
+        return -1;
+    }
+    if (pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED) != 0) {
+        syslog(LOG_ERR, "Mutex attribute set PTHREAD_MUTEX_ROBUST failed, errno=%d:%s\n",
+                        errno,
+                        strerror(errno));
+        return -1;
+    }
+    if (pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST) != 0) {
+        syslog(LOG_ERR, "Mutex attribute set PTHREAD_MUTEX_ROBUST failed, errno=%d:%s\n",
+                        errno,
+                        strerror(errno));
+        return -1;
+    }
 
     return 0;
 }
@@ -214,14 +261,11 @@ pid_t NodeManager::start_process(const char* cmd)
 
 void register_signal(int signo, void (*handler)(int)) 
 {
-    struct sigaction sa = { 0 };
-    sa.sa_handler = handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    if (sigaction(signo, &sa, NULL) < 0) {
-        getlog()->sendlog(FATAL, "Register signal failed, errno=%d:%s\n",
-                                 errno,
-                                 strerror(errno));
+    int err;
+    if (::register_signal(signo, handler, &err)!= 0) {
+        getlog()->sendlog(FATAL, "Register signal failed, err=%d:%s\n",
+                                 err,
+                                 strerror(err));
     }
 }
 

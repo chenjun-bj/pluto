@@ -1,15 +1,13 @@
 /**
  *******************************************************************************
- * stdinclude.h                                                                *
+ * messages.h                                                                  *
  *                                                                             *
- * Standard hearder file:                                                      *
- *   - defines constants for project                                           *
- *   - includes header files used by all source                                *
+ * Message types:                                                              *
  *******************************************************************************
  */
 
-#ifndef _STD_INCLUDE_H_
-#define _STD_INLCUDE_H_
+#ifndef _MESSAGES_H_
+#define _MESSAGES_H_
 
 
 /**
@@ -17,34 +15,33 @@
  * Headers                                                                     *
  *******************************************************************************
  */
-#include <unistd.h>
-#include <errno.h>
-
-#include <string.h>
-#include <stdlib.h>
-
-#include "pltypes.h"
-#include "log.h"
-#include "config.h"
-#include "util.h"
 
 /**
  *******************************************************************************
  * Constants                                                                   *
  *******************************************************************************
  */
+enum MsgType{
+    JOINREQ,
+    JOINRESP,
+    HEARTBEATMSG,
+    PEERLEAVEMSG,
+    CREATREQ,
+    CREATRESP,
+    UPDATEREQ,
+    UPDATERESP,
+    READREQ,
+    READRESP,
+    DELETEREQ,
+    DELETERESP
+}
 
-#define KV_RING_DEF_SIZE 512   // The ring size, that the maximum number of node 
-                               // supported by store
-/* Membership protocol parameters */
-#define MEM_PROT_DEF_TFAIL     5
-#define MEM_PROT_DEF_TREMOVE   20
-#define MEM_PROT_DEF_NAME      "GOSSIP" 
-
-#define MEM_PROT_DEF_GOSSIP_B  3
-
-/* Environment variable names */
-#define ENV_NM_BASE_IPCKEY    "PLUTO_IPCKEY" 
+typedef struct {
+    int          magic;
+    int          version;
+    enum MsgType type;
+    int          reserved;
+} MsgCommonHdr;
 
 /**
  *******************************************************************************
@@ -52,5 +49,5 @@
  *******************************************************************************
  */
 
-#endif // _STD_INCLUDE_H_
+#endif // _MESSAGES_H_
 

@@ -30,6 +30,12 @@
 
 #define PL_RUNNING_ST_RUN    1
 #define PL_RUNNING_ST_STOP   0
+
+#define PL_CHILD_ST_NONE     0X00
+#define PL_CHILD_ST_INIT     0X01
+#define PL_CHILD_ST_RUN      0X02
+#define PL_CHILD_ST_STOP     0X04 
+#define PL_CHILD_ST_FAIL     0X08
  
 /*
  *******************************************************************************
@@ -51,7 +57,7 @@
     +--------+--------+--------+--------+--------+--------+--------+--------+
     |                              MAGIC NUMBER                             |
     +--------+--------+--------+--------+--------+--------+--------+--------+
-    |              IPCKEY               |         Running status            |
+    |              IPCKEY               | Running status  |ST membr|ST store|
     +--------+--------+--------+--------+--------+--------+--------+--------+
     |  PID of memebership process       |  PID of store process             |
     +--------+--------+--------+--------+--------+--------+--------+--------+
@@ -123,7 +129,9 @@ struct MemberEntry {
 struct Membership {
     uint64  magic_number;
     key_t   ipckey;
-    uint32  running_status;
+    uint16  running_status;
+    uint8   st_member;
+    uint8   st_store;
     pid_t   pid_member;
     pid_t   pid_store;
     pthread_mutex_t mutex;
@@ -157,8 +165,14 @@ public:
     bool set_ipckey(key_t);
     key_t  get_ipckey() const;
 
-    bool set_running_status(uint32 status);
-    uint32 get_running_status() const;
+    bool set_running_status(uint16 status);
+    uint16 get_running_status() const;
+
+    bool set_membership_status(uint8 status);
+    uint8 get_membership_status() const;
+
+    bool set_store_status(uint8 status);
+    uint8 get_store_status() const;
 
     bool set_pid_member(pid_t pid);
     pid_t  get_pid_member() const;
@@ -171,6 +185,8 @@ public:
 
     pthread_mutex_t* get_mutex() const;
 
+protected:
+    bool valid_child_status(uint8 st) const;
 private:
     struct Membership * m_paddr;
 };

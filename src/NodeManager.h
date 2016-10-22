@@ -54,6 +54,8 @@ private:
 
     void cleanup();
 
+    int init_lock();
+
 private:
     pid_t  m_pid_membershipproc;
     pid_t  m_pid_storeproc;

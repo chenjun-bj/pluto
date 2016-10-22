@@ -5,11 +5,8 @@ exe nodemanager
 
 exe pladmin 
 	: NodeAdmin.cpp  /pluto/common//plutcom /pluto/common//plutlog
-        : <threading>multi
+        : <threading>multi <library>/boost//program_options
 	;
-exe plmembership 
-	: DummyProc.cpp  /pluto/common//plutcom /pluto/common//plutlog
-	;
-exe plstore 
-	: DummyProc.cpp  /pluto/common//plutcom /pluto/common//plutlog
+exe test 
+	: test.cpp  /pluto/common//plutcom /pluto/common//plutlog
 	;

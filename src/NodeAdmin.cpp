@@ -18,6 +18,10 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
+#include <string>
+#include <iostream>
+#include <boost/program_options.hpp>
+
 /*
  *******************************************************************************
  *  Declaractions                                                              *
@@ -37,19 +41,50 @@
  */
 int main(int argc, char* argv[])
 {
-    key_t  ipckey;
+    namespace po = boost::program_options;
+    using namespace std;
+
+    key_t  ipckey = -1;
     int    shmid = -1;
     void * addr = nullptr;
 
-    if (argc>1) {
-        GetConfigPortal()->load(argv[1]);
-        ipckey =GetConfigPortal()->get_ipckey();
+    try {
+        po::options_description desc("allowed options");
+        desc.add_options()
+            ("help,h", "show this help message")
+            ("ipckey,k", po::value<int>(), "specify the IPCKEY")
+            ("config,f", po::value<string>(), "configuration file")
+        ;
+
+        po::variables_map vm;
+        po::store(po::parse_command_line(argc, argv, desc), vm);
+        po::notify(vm);
+
+        if (vm.count("help")) {
+            cout << desc << "\n";
+            return 0;
+        }
+        if (vm.count("ipckey")) {
+            ipckey = vm["ipckey"].as<int>();
+        }
+        if (vm.count("config")) {
+            GetConfigPortal()->load(vm["config"].as<string>().c_str());
+            ipckey = GetConfigPortal()->get_ipckey();
+        }
     }
-    else {
+    catch (exception & e) {
+        cout << e.what() << endl;;
+    }
+
+    if (ipckey == -1) {
         char * env = getenv(ENV_NM_BASE_IPCKEY);
         if (env != nullptr) {
             ipckey = atoi(env);
         }
+    }
+
+    if (ipckey == -1) {
+        cout << "Missing option\n" ;
     }
 
 #define SHM_MODE    0400    /*User read*/
