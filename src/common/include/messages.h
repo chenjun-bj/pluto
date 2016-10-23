@@ -15,17 +15,24 @@
  * Headers                                                                     *
  *******************************************************************************
  */
+#include <string>
+#include <new>
+
+#include <stdio.h>
+
+#include "plexcept.h"
 
 /**
  *******************************************************************************
  * Constants                                                                   *
  *******************************************************************************
  */
-enum MsgType{
+enum class MsgType : int {
+    PLUTO_FIRST=0,
     JOINREQ,
     JOINRESP,
-    HEARTBEATMSG,
-    PEERLEAVEMSG,
+    HEARTBEAT,
+    PEERLEAVE,
     CREATREQ,
     CREATRESP,
     UPDATEREQ,
@@ -33,15 +40,202 @@ enum MsgType{
     READREQ,
     READRESP,
     DELETEREQ,
-    DELETERESP
-}
+    DELETERESP,
+    PLUTO_LAST,
+    INVTYPE=PLUTO_LAST
+};
+
+#define PLUTO_MSG_MAGIC   0X504C5401
 
 typedef struct {
-    int          magic;
-    int          version;
-    enum MsgType type;
-    int          reserved;
+    int magic;
+    int version;
+    int type;
+    int reserved;
 } MsgCommonHdr;
+
+/**
+ *******************************************************************************
+ * Class declaraction                                                          *
+ *******************************************************************************
+ */
+inline std::string get_desc_msgtype(MsgType type) 
+{
+    switch(type) {
+    case MsgType::JOINREQ:    return "JOINREQ";
+    case MsgType::JOINRESP:   return "JOINRESP";
+    case MsgType::HEARTBEAT:  return "HEARTBEAT";
+    case MsgType::PEERLEAVE:  return "PEERLEAVE";
+    case MsgType::CREATREQ:   return "CREATREQ";
+    case MsgType::CREATRESP:  return "CREATRESP";
+    case MsgType::UPDATEREQ:  return "UPDATEREQ";
+    case MsgType::UPDATERESP: return "UPDATERESP";
+    case MsgType::READREQ:    return "READREQ";
+    case MsgType::READRESP:   return "READRESP";
+    case MsgType::DELETEREQ:  return "DELETEREQ";
+    case MsgType::DELETERESP: return "DELETERESP";
+    default: return "Unknown";
+    }
+}
+
+class Message {
+public:
+    Message(unsigned char* msg, unsigned long sz) :
+       m_pbuf(msg), m_msgsize(sz) {
+        //parse_msg();
+    }
+
+    Message(MsgType type, int version=PLUTO_CURRENT_VERSION, int magic=PLUTO_MSG_MAGIC): m_pbuf(nullptr) {
+        m_hdr.magic   = magic;
+        m_hdr.version = version;
+        m_hdr.type    = static_cast<int>(type);
+    }
+
+    virtual ~Message() {
+        if (m_pbuf) {
+            delete [] m_pbuf;
+        }
+    }
+
+    Message(const Message& other) = delete;
+    Message& operator=(const Message& other) = delete;
+
+    Message(Message&& other) : m_pbuf(other.m_pbuf), m_msgsize(0), m_hdr(other.m_hdr) {
+        other.m_pbuf = nullptr;
+    }
+
+    Message& operator=(Message&& other) {
+        if (this != &other) {
+            if (m_pbuf) delete [] m_pbuf;
+            m_pbuf = other.m_pbuf;
+            other.m_pbuf = nullptr;
+            m_hdr = other.m_hdr;
+            m_msgsize = 0;
+        }
+        return *this;
+    }
+
+    int build_msg() {
+        const unsigned MSGHDRSZ = sizeof(MsgCommonHdr);
+        m_msgsize = get_bodysize() + MSGHDRSZ;
+        if (m_msgsize < MSGHDRSZ) {
+            return -1;
+        }
+        if (m_pbuf) {
+            delete [] m_pbuf;
+        }
+        m_pbuf = new(std::nothrow) unsigned char[m_msgsize];
+        if (m_pbuf == nullptr) {
+            return -1;
+        } 
+
+        int rc = build_msg_hdr();
+        if (rc != 0) {
+            return -1;
+        }
+
+        rc = build_msg_body(m_pbuf+MSGHDRSZ, m_msgsize-MSGHDRSZ);
+        if (rc != 0) {
+            return -1;
+        }
+
+        return 0;
+    }
+
+    int build_msg_hdr() {
+        const unsigned MSGHDRSZ = sizeof(MsgCommonHdr);
+        if (m_pbuf) {
+            memcpy(m_pbuf, &m_hdr, MSGHDRSZ);
+            return 0;
+        }
+        return -1;
+    }
+
+    virtual int build_msg_body(unsigned char* buf, unsigned long size) = 0;
+    
+    virtual unsigned long get_bodysize() const = 0;
+
+    virtual void parse_msg() throw (parse_error) {
+        if (m_pbuf) {
+            const unsigned MSGHDRSZ = sizeof(MsgCommonHdr);
+            parse_msg_hdr();
+            parse_msg_body(m_pbuf+MSGHDRSZ, m_msgsize-MSGHDRSZ);
+        } else {
+            throw parse_error("null buffer");
+        }
+    }
+
+    void parse_msg_hdr() throw(parse_error) {
+        if (!m_pbuf) {
+            throw parse_error("null buffer");
+        }
+
+        const unsigned MSGHDRSZ = sizeof(MsgCommonHdr);
+        if (m_msgsize < MSGHDRSZ) {
+            throw parse_error("in-complete header received");
+        }
+
+        MsgCommonHdr *pHdr = reinterpret_cast<MsgCommonHdr*>(m_pbuf);
+        if (pHdr == nullptr) {
+            throw parse_error("internal error, cast failed");
+        }
+        m_hdr.magic   = pHdr->magic;
+        m_hdr.version = pHdr->version;
+
+        int low, hi;
+        low = static_cast<int>(MsgType::PLUTO_FIRST);
+        hi  = static_cast<int>(MsgType::PLUTO_LAST);
+        if ((pHdr->type <= low) || (pHdr->type >= hi)) {
+            char errmsg[128] = { '\0' };
+            snprintf(errmsg, sizeof(errmsg), "invalid type value '%d'", pHdr->type);
+            throw parse_error(errmsg);
+        }
+        m_hdr.type = pHdr->type;
+    }
+
+    virtual void parse_msg_body(unsigned char*, unsigned long) 
+                     throw(parse_error) = 0;
+
+    void dump(int (*output)(const char*, ...)=printf,
+              bool verbose=false) const {
+        if (m_pbuf) {
+            if (verbose) {
+                dump_memory(NULL, (const char*)m_pbuf, m_msgsize);
+            }
+            dump_hdr(output, verbose);
+            dump_body(output, verbose);
+            
+        }
+    }
+
+    void dump_hdr(int (*output)(const char*, ...)=printf, 
+                  bool verbose=false) const {
+        output("Magic  : %0X\n", get_magic());
+        output("Version: %0X\n", get_version());
+        output("Type:    %s\n", get_desc_msgtype(get_msgtype()).c_str());
+    }
+
+    virtual void dump_body(int (*output)(const char*, ...)=printf,
+                           bool verbose=false) const = 0;
+    
+    int get_magic() const {
+        return m_hdr.magic;
+    }
+    int get_version() const {
+        return m_hdr.version;
+    }
+    MsgType get_msgtype() const {
+        return static_cast<MsgType>(m_hdr.type);
+    }
+
+    unsigned char* get_raw() const {
+        return m_pbuf;
+    }
+private:
+    unsigned char* m_pbuf;
+    unsigned long  m_msgsize;
+    MsgCommonHdr   m_hdr;
+};
 
 /**
  *******************************************************************************

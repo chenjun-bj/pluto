@@ -24,6 +24,7 @@
 #include <stdlib.h>
 
 #include "pltypes.h"
+#include "plexcept.h"
 #include "log.h"
 #include "config.h"
 #include "util.h"
@@ -33,6 +34,8 @@
  * Constants                                                                   *
  *******************************************************************************
  */
+/* Current version number */
+#define PLUTO_CURRENT_VERSION   1
 
 #define KV_RING_DEF_SIZE 512   // The ring size, that the maximum number of node 
                                // supported by store

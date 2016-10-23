@@ -14,6 +14,7 @@
  */
 #include "scopelock.h"
 
+#include <errno.h>
 /*
  *******************************************************************************
  *  Macros                                                                     *
@@ -49,7 +50,16 @@ ScopeLock::~ScopeLock()
 bool ScopeLock::lock()
 {
     if (m_pmutex) {
-        return pthread_mutex_lock(m_pmutex) == 0 ? true : false;
+        while ( pthread_mutex_lock(m_pmutex) != 0 ) {
+            if (errno==EOWNERDEAD) { 
+                // TODO: check implementation on Linux
+                pthread_mutex_consistent(m_pmutex);
+            }
+            else {
+                return false;
+            }
+        }
+        return true;
     }
     return false;
 }

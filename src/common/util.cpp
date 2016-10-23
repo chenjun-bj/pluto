@@ -13,9 +13,9 @@
  */
 #include "util.h"
 
-#include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <signal.h>
 #include <syslog.h>
 #include <errno.h>
@@ -154,3 +154,46 @@ int register_signal(int signo, void (*handler)(int), int * errcode)
     }
     return 0;
 }
+
+void dump_memory(const char* cap, const char* data, unsigned long sz,
+                 int (*output)(const char*, ...))
+{
+    if (cap) {
+        output("%s\n", cap);
+    }
+
+    unsigned int i = 0;
+    unsigned int offset = 0;
+
+    while (offset < sz)
+    {
+        output("%04X : ", offset);
+        // DUMP Hexa
+        for (i = offset; i < offset + 16; i++)
+        {
+            if (i < sz) {
+                output("%02X ", (unsigned char)*(data + i));
+            }
+            else {
+                output("   ");
+            }
+        }
+        output("  ");
+        // DUMP Ascii
+        for (i = offset; i < offset + 16; i++)
+        {
+            if (i < sz)
+            {
+                if (isprint(*(data+i))) {
+                    output("%c", *(data + i));
+                }
+                else {
+                    output(".");
+                }
+            }
+        }
+        output("\n");
+        offset += 16;
+    }
+}
+

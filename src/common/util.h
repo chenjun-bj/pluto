@@ -10,12 +10,13 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_
 
-
 /**
  *******************************************************************************
  * Headers                                                                     *
  *******************************************************************************
  */
+
+#include <stdio.h>
 
 /**
  *******************************************************************************
@@ -32,5 +33,7 @@
 void daemonize(const char *cmd);
 int register_signal(int signo, void (*handler)(int), int * errcode);
 
+void dump_memory(const char* cap, const char* data, unsigned long sz,
+                 int (*output)(const char*, ...)=printf);
 #endif // _UTIL_H_
 
