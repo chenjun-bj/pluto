@@ -115,6 +115,21 @@ public:
         return *this;
     }
 
+    unsigned char* msgbodyptr() {
+        if (m_pbuf) {
+            return m_pbuf + sizeof(MsgCommonHdr);
+        }
+        return nullptr;
+    }
+
+    unsigned long msgbodysize() {
+        const unsigned MSGHDRSZ = sizeof(MsgCommonHdr);
+        if (m_msgsize>MSGHDRSZ) {
+            return m_msgsize - MSGHDRSZ;
+        }
+        return 0;
+    }
+
     int build_msg() {
         const unsigned MSGHDRSZ = sizeof(MsgCommonHdr);
         m_msgsize = get_bodysize() + MSGHDRSZ;
@@ -186,9 +201,8 @@ public:
         low = static_cast<int>(MsgType::PLUTO_FIRST);
         hi  = static_cast<int>(MsgType::PLUTO_LAST);
         if ((pHdr->type <= low) || (pHdr->type >= hi)) {
-            char errmsg[128] = { '\0' };
-            snprintf(errmsg, sizeof(errmsg), "invalid type value '%d'", pHdr->type);
-            throw parse_error(errmsg);
+            std::string errmsg="invalid type value " + std::to_string(pHdr->type);
+            throw parse_error(errmsg.c_str());
         }
         m_hdr.type = pHdr->type;
     }

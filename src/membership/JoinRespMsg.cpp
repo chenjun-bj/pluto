@@ -14,7 +14,7 @@
 #include <stdexcept>
 #include <arpa/inet.h>
 
-#include "JoinReqMsg.h"
+#include "JoinRespMsg.h"
 
 /*
  *******************************************************************************
@@ -28,14 +28,14 @@
  *******************************************************************************
  */
 
-JoinRequestMessage::JoinRequestMessage(unsigned char* msg, unsigned long sz) : 
+JoinResponseMessage::JoinResponseMessage(unsigned char* msg, unsigned long sz) : 
    Message(msg, sz),
    m_addr(msgbodyptr(), msgbodysize())
 {
    //parse_msg();
 }
 
-JoinRequestMessage::JoinRequestMessage(int af, unsigned short port, 
+JoinResponseMessage::JoinResponseMessage(int af, unsigned short port, 
                                        unsigned char* ip) :
    Message(MsgType::JOINREQ),
    m_addr(af, SOCK_STREAM, ip, port,
@@ -43,69 +43,49 @@ JoinRequestMessage::JoinRequestMessage(int af, unsigned short port,
 {
 }
 
-JoinRequestMessage::~JoinRequestMessage()
+JoinResponseMessage::~JoinResponseMessage()
 {
 }
 
-JoinRequestMessage::JoinRequestMessage(JoinRequestMessage&& other) :
+JoinResponseMessage::JoinResponseMessage(JoinResponseMessage&& other) :
    Message(std::move(other)),
    m_addr(std::move(other.m_addr))
 {
+    m_status = other.m_status;
 }
 
 
-JoinRequestMessage& JoinRequestMessage::operator=(JoinRequestMessage&& other)
+JoinResponseMessage& JoinResponseMessage::operator=(JoinResponseMessage&& other)
 {
     Message::operator=(std::move(other));
     if (this != &other) {
-        m_addr = std::move(other.m_addr);
+        m_status = other.m_status;
     }
     return *this;
 }
 
-unsigned long JoinRequestMessage::get_bodysize() const
+unsigned long JoinResponseMessage::get_bodysize() const
 {
-    return m_addr.get_required_buf_len();
-}
-
-int JoinRequestMessage::build_msg_body(unsigned char* buf, unsigned long size)
-{
-    m_addr.build(buf, size);
     return 0;
 }
 
-void JoinRequestMessage::parse_msg_body(unsigned char* buf, unsigned long size)
+int JoinResponseMessage::build_msg_body(unsigned char* buf, unsigned long size)
+{
+    return 0;
+}
+
+void JoinResponseMessage::parse_msg_body(unsigned char* buf, unsigned long size)
                        throw(parse_error)
 {
-    m_addr.parse(buf, size);
 }
 
-void JoinRequestMessage:: dump_body(int (*output)(const char*, ...),
+void JoinResponseMessage:: dump_body(int (*output)(const char*, ...),
                                     bool verbose) const
 {
-    m_addr.dump(output);
+    m_addr.dump();
+    output("Status: %d\n", m_status);
 }
 
-void JoinRequestMessage::set_ip_addr(int af, unsigned char* ip)
-{
-    m_addr.set_ip_addr(af, ip, 
-                       af == AF_INET ? PL_IPv4_ADDR_LEN : PL_IPv6_ADDR_LEN);
-}
-
-void JoinRequestMessage::set_portnumber(unsigned short port)
-{
-    m_addr.set_port(port);
-}
-
-const unsigned char* JoinRequestMessage::get_ip_addr(int * af) const
-{
-    return m_addr.get_ip_addr(af);
-}
-
-unsigned short JoinRequestMessage::get_portnumber() const
-{
-    return m_addr.get_port();
-}
 
 /*
  *******************************************************************************

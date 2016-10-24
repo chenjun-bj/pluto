@@ -1,13 +1,13 @@
 /**
  *******************************************************************************
- * JoinReqMsg.h                                                                *
+ * JoinRespMsg.h                                                               *
  *                                                                             *
- * Join request message                                                        *
+ * Join response message                                                       *
  *******************************************************************************
  */
 
-#ifndef _JOIN_REQ_MESG_H_
-#define _JOIN_REQ_MESG_H_
+#ifndef _JOIN_RESP_MESG_H_
+#define _JOIN_RESP_MESG_H_
 
 /*
  *******************************************************************************
@@ -30,17 +30,17 @@
  *******************************************************************************
  */
 
-class JoinRequestMessage : public Message{
+class JoinResponseMessage : public Message{
 public:
-    JoinRequestMessage(unsigned char* msg, unsigned long sz);
-    JoinRequestMessage(int af, unsigned short port, unsigned char* ip);
-    ~JoinRequestMessage();
+    JoinResponseMessage(unsigned char* msg, unsigned long sz);
+    JoinResponseMessage(int af, unsigned short port, unsigned char* ip);
+    ~JoinResponseMessage();
 
-    JoinRequestMessage(const JoinRequestMessage& other) = delete;
-    JoinRequestMessage& operator=(const JoinRequestMessage& other) = delete;
+    JoinResponseMessage(const JoinResponseMessage& other) = delete;
+    JoinResponseMessage& operator=(const JoinResponseMessage& other) = delete;
 
-    JoinRequestMessage( JoinRequestMessage&& other);
-    JoinRequestMessage& operator=(JoinRequestMessage&& other);
+    JoinResponseMessage( JoinResponseMessage&& other);
+    JoinResponseMessage& operator=(JoinResponseMessage&& other);
 
     virtual unsigned long get_bodysize() const;
 
@@ -52,13 +52,10 @@ public:
     virtual void dump_body(int (*output)(const char*, ...)=printf,
                            bool verbose=false) const;
 
-    /* IPv4: 4 bytes, IPv6: 16 bytes */
-    void set_ip_addr(int af, unsigned char* ip);
-    void set_portnumber(unsigned short port);
-
-    const unsigned char* get_ip_addr(int * af) const;
-    unsigned short get_portnumber() const; 
+    void set_status(int status);
+    int  get_status() const;
 private:
+    int     m_status;
     Address m_addr;
 };
 

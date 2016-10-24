@@ -17,6 +17,7 @@
  *******************************************************************************
  */
 
+#include <string>
 #include <stdexcept>
 
 /**
@@ -40,6 +41,9 @@
 class parse_error : public std::runtime_error {
 public:
     parse_error(const char* errmsg): 
+       std::runtime_error(errmsg) {
+    } 
+    parse_error(const std::string & errmsg): 
        std::runtime_error(errmsg) {
     } 
 };
