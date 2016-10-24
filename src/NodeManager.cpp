@@ -141,6 +141,12 @@ int NodeManager::init_lock()
                         strerror(errno));
         return -1;
     }
+    if (pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT) != 0) {
+        syslog(LOG_ERR, "Mutex attribute set PTHREAD_PRIO_INHERIT failed, errno=%d:%s\n",
+                        errno,
+                        strerror(errno));
+        return -1;
+    }
 
     return 0;
 }
