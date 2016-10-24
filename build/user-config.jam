@@ -42,7 +42,7 @@
 # using gcc ;
 
 # Configure specific gcc version, giving alternative name to use.
-using gcc : : g++ : <compileflags>"-m64 -std=c++11" <linkflags>-m64 ;
+using gcc : : g++ : <compileflags>"-m64 -std=c++11" <linkflags>-m64 <linkflags>-lpthread ;
 using boost : 1.62 : <include>/opt/boost_1_62_0/include <library>/opt/boost_1_62_0/lib <layout>system ;
 
 
