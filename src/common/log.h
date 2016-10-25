@@ -24,12 +24,15 @@
  */
 
 // Log level macros
-#define TRACE    0
-#define DEBUG    1
-#define INFO     2
-#define WARNING  3
-#define ERROR    4
-#define FATAL    5
+
+enum class LogLevel : unsigned int {
+    TRACE = 0,
+    DEBUG,
+    INFO,
+    WARNING,
+    ERROR,
+    FATAL
+};
 
 /*
  *******************************************************************************
@@ -53,7 +56,7 @@ private:
 public:
     ~Log() ;
     void set_log_file(char* fn);
-    void sendlog(int level, const char* fmt, ...);
+    void sendlog(LogLevel level, const char* fmt, ...);
 
     static Log* get_instance();
 private:

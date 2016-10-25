@@ -55,7 +55,7 @@ void Log::set_log_file(char* fn)
     }
 }
 
-void Log::sendlog(int level, const char* fmt, ...)
+void Log::sendlog(LogLevel level, const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);

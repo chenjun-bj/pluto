@@ -155,7 +155,7 @@ int NodeManager::startup()
 {
     if ((start_membership() != 0) || 
         (start_store() != 0)) {
-        getlog()->sendlog(FATAL, "Failed to startup process\n");
+        getlog()->sendlog(LogLevel::FATAL, "Failed to startup process\n");
         terminate();
         return -1;
     }
@@ -173,7 +173,7 @@ int NodeManager::startup()
                 rc = start_store();
             }
             if (rc != 0) {
-                getlog()->sendlog(FATAL, "Restart process failed");
+                getlog()->sendlog(LogLevel::FATAL, "Restart process failed");
                 terminate();
             }
         }
@@ -246,14 +246,14 @@ pid_t NodeManager::start_process(const char* cmd)
 {
     pid_t pid = fork();
     if (pid < 0) {
-        getlog()->sendlog(FATAL, "fork failed for '%s', errno=%d:%s\n",
+        getlog()->sendlog(LogLevel::FATAL, "fork failed for '%s', errno=%d:%s\n",
                                  cmd,
                                  errno,
                                  strerror(errno));
     }
     else if (pid == 0) {
         if (execlp(cmd, cmd, NULL) < 0) {
-            getlog()->sendlog(FATAL, "exec failed for '%s', errno=%d:%s\n",
+            getlog()->sendlog(LogLevel::FATAL, "exec failed for '%s', errno=%d:%s\n",
                                      cmd,
                                      errno,
                                      strerror(errno));
@@ -269,7 +269,7 @@ void register_signal(int signo, void (*handler)(int))
 {
     int err;
     if (::register_signal(signo, handler, &err)!= 0) {
-        getlog()->sendlog(FATAL, "Register signal failed, err=%d:%s\n",
+        getlog()->sendlog(LogLevel::FATAL, "Register signal failed, err=%d:%s\n",
                                  err,
                                  strerror(err));
     }

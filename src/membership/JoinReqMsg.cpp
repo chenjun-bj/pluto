@@ -12,6 +12,7 @@
  *******************************************************************************
  */
 #include <stdexcept>
+#include <utility>
 #include <arpa/inet.h>
 
 #include "JoinReqMsg.h"
@@ -28,7 +29,7 @@
  *******************************************************************************
  */
 
-JoinRequestMessage::JoinRequestMessage(unsigned char* msg, unsigned long sz) : 
+JoinRequestMessage::JoinRequestMessage(unsigned char* msg, size_t sz) : 
    Message(msg, sz),
    m_addr(msgbodyptr(), msgbodysize())
 {
@@ -63,18 +64,18 @@ JoinRequestMessage& JoinRequestMessage::operator=(JoinRequestMessage&& other)
     return *this;
 }
 
-unsigned long JoinRequestMessage::get_bodysize() const
+size_t JoinRequestMessage::get_bodysize() const
 {
     return m_addr.get_required_buf_len();
 }
 
-int JoinRequestMessage::build_msg_body(unsigned char* buf, unsigned long size)
+int JoinRequestMessage::build_msg_body(unsigned char* buf, size_t size)
 {
     m_addr.build(buf, size);
     return 0;
 }
 
-void JoinRequestMessage::parse_msg_body(unsigned char* buf, unsigned long size)
+void JoinRequestMessage::parse_msg_body(unsigned char* buf, size_t size)
                        throw(parse_error)
 {
     m_addr.parse(buf, size);

@@ -45,6 +45,13 @@ enum class MsgType : int {
     INVTYPE=PLUTO_LAST
 };
 
+enum class MsgStatus : int {
+    PLUTO_FIRST=0,
+    OK=PLUTO_FIRST,
+    ERROR,
+    PLUTO_LAST,
+};
+
 #define PLUTO_MSG_MAGIC   0X504C5401
 
 typedef struct {
@@ -80,7 +87,7 @@ inline std::string get_desc_msgtype(MsgType type)
 
 class Message {
 public:
-    Message(unsigned char* msg, unsigned long sz) :
+    Message(unsigned char* msg, size_t sz) :
        m_pbuf(msg), m_msgsize(sz) {
         //parse_msg();
     }
@@ -122,7 +129,7 @@ public:
         return nullptr;
     }
 
-    unsigned long msgbodysize() {
+    size_t msgbodysize() {
         const unsigned MSGHDRSZ = sizeof(MsgCommonHdr);
         if (m_msgsize>MSGHDRSZ) {
             return m_msgsize - MSGHDRSZ;
@@ -166,9 +173,9 @@ public:
         return -1;
     }
 
-    virtual int build_msg_body(unsigned char* buf, unsigned long size) = 0;
+    virtual int build_msg_body(unsigned char* buf, size_t size) = 0;
     
-    virtual unsigned long get_bodysize() const = 0;
+    virtual size_t get_bodysize() const = 0;
 
     virtual void parse_msg() throw (parse_error) {
         if (m_pbuf) {
@@ -207,7 +214,7 @@ public:
         m_hdr.type = pHdr->type;
     }
 
-    virtual void parse_msg_body(unsigned char*, unsigned long) 
+    virtual void parse_msg_body(unsigned char*, size_t) 
                      throw(parse_error) = 0;
 
     void dump(int (*output)(const char*, ...)=printf,
@@ -247,7 +254,7 @@ public:
     }
 private:
     unsigned char* m_pbuf;
-    unsigned long  m_msgsize;
+    size_t         m_msgsize;
     MsgCommonHdr   m_hdr;
 };
 

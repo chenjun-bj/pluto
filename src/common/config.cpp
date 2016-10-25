@@ -81,23 +81,23 @@ bool ConfigPortal::load(const string& filename)
         }
     }
     catch(pt::ptree_bad_path & e) {
-        getlog()->sendlog(FATAL, "'%s': bad path : '%s'\n", filename.c_str(), e.what());
+        getlog()->sendlog(LogLevel::ERROR, "'%s': bad path : '%s'\n", filename.c_str(), e.what());
         return false;
     }
     catch(pt::ptree_bad_data & e) {
-        getlog()->sendlog(FATAL, "'%s': bad data : '%s'\n", filename.c_str(), e.what());
+        getlog()->sendlog(LogLevel::ERROR, "'%s': bad data : '%s'\n", filename.c_str(), e.what());
         return false;
     }
     catch(pt::ptree_error & e) {
-        getlog()->sendlog(FATAL, "'%s': error : '%s'\n", filename.c_str(), e.what());
+        getlog()->sendlog(LogLevel::ERROR, "'%s': error : '%s'\n", filename.c_str(), e.what());
         return false;
     }
     catch(...) {
-        getlog()->sendlog(FATAL, "'%s': unknown error occur during parsing\n", filename.c_str());
+        getlog()->sendlog(LogLevel::ERROR, "'%s': unknown error occur during parsing\n", filename.c_str());
         return false;
     }
 
-    getlog()->sendlog(FATAL, "'%s': format not support\n", filename.c_str());
+    getlog()->sendlog(LogLevel::ERROR, "'%s': format not support\n", filename.c_str());
     return false;
 }
 
@@ -127,7 +127,7 @@ vector<pair<string, unsigned short> > ConfigPortal::get_joinaddress() const
         }
     }
     catch (pt::ptree_error & e) {
-        getlog()->sendlog(FATAL, "get_joinaddress error: %s\n", e.what());
+        getlog()->sendlog(LogLevel::ERROR, "get_joinaddress error: %s\n", e.what());
     }
     return joinaddr;
 }

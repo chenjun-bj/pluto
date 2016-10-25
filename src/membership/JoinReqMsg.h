@@ -32,7 +32,7 @@
 
 class JoinRequestMessage : public Message{
 public:
-    JoinRequestMessage(unsigned char* msg, unsigned long sz);
+    JoinRequestMessage(unsigned char* msg, size_t sz);
     JoinRequestMessage(int af, unsigned short port, unsigned char* ip);
     ~JoinRequestMessage();
 
@@ -42,11 +42,11 @@ public:
     JoinRequestMessage( JoinRequestMessage&& other);
     JoinRequestMessage& operator=(JoinRequestMessage&& other);
 
-    virtual unsigned long get_bodysize() const;
+    virtual size_t get_bodysize() const;
 
-    virtual int build_msg_body(unsigned char* buf, unsigned long size);
+    virtual int build_msg_body(unsigned char* buf, size_t size);
 
-    virtual void parse_msg_body(unsigned char* buf, unsigned long size) 
+    virtual void parse_msg_body(unsigned char* buf, size_t size) 
                               throw(parse_error);
 
     virtual void dump_body(int (*output)(const char*, ...)=printf,

@@ -39,15 +39,16 @@
 
 class Address {
 public:
-    Address(const unsigned char* buf, const unsigned size) {
+    Address(const unsigned char* buf, const size_t size) {
         parse(buf, size);
     };
   
     Address(int af, int type, 
             const unsigned char* addr, unsigned short port,
-            unsigned addr_len = PL_IPv4_ADDR_LEN) {
+            size_t addr_len = PL_IPv4_ADDR_LEN) {
         set_ip_addr(af, addr, addr_len);
         set_port(port);
+        set_type(type);
     }
 
     Address(const Address& other):
@@ -84,7 +85,7 @@ public:
         return *this;
     }
 
-    void parse(const unsigned char*buf, const unsigned size) throw (parse_error) 
+    void parse(const unsigned char*buf, const size_t size) throw (parse_error) 
     {
         /* Format 
          * int - Address Family: AF_INET, AF_INET6 
@@ -92,20 +93,21 @@ public:
          * unsigned char[] - Self address, 4/16 bytes
          * unsigned short - Self portnumber
          * unsigned short - Reserved 
+         * int - Reserved2 for AF_INET6
          */
         if (buf==nullptr) {
             throw parse_error("null buffer");
         }
 
-        unsigned int minlen = 2*sizeof(int) + 2*sizeof(short) + PL_IPv4_ADDR_LEN;
+        size_t minlen = 2*sizeof(int32) + 2*sizeof(int16) + PL_IPv4_ADDR_LEN;
         if (size < minlen) {
             throw parse_error("size error");
         }
 
         int ival;
         // Address family
-        memcpy(&ival, buf, sizeof(int));
-        buf += sizeof(int);
+        memcpy(&ival, buf, sizeof(int32));
+        buf += sizeof(int32);
 
         ival = ntohl(ival);
         if ((ival != AF_INET) && (ival != AF_INET6)) {
@@ -115,8 +117,8 @@ public:
         m_af = ival;
 
         // Type
-        memcpy(&ival, buf, sizeof(int));
-        buf += sizeof(int);
+        memcpy(&ival, buf, sizeof(int32));
+        buf += sizeof(int32);
 
         ival = ntohl(ival);
         if ((ival != SOCK_STREAM) && (ival != SOCK_DGRAM)) {
@@ -132,28 +134,32 @@ public:
             buf += PL_IPv4_ADDR_LEN;
         } else {
             // IPv6
-            if (size < minlen + 12) {
+            if (size < minlen + 16) {
                 throw parse_error("IPv6 size error");
             }
             memcpy(m_addr, buf, PL_IPv6_ADDR_LEN);
             buf += PL_IPv6_ADDR_LEN;
         }
 
-        unsigned short sval;
+        uint16 sval;
         // Port number
-        memcpy(&sval, buf, sizeof(unsigned short));
-        buf += sizeof(unsigned short);
+        memcpy(&sval, buf, sizeof(uint16));
+        buf += sizeof(uint16);
         m_portnum = ntohs(sval);
 
         // Reserved
-        memcpy(&sval, buf, sizeof(unsigned short));
-        buf += sizeof(unsigned short);
+        memcpy(&sval, buf, sizeof(uint16));
+        buf += sizeof(uint16);
+
+        if (m_af == AF_INET6) {
+            buf += sizeof(int32); // Reserved2
+        }
     }
 
     // serialize 
-    void build(unsigned char* buf, unsigned size)
+    void build(unsigned char* buf, size_t size)
     {
-        unsigned req_len = get_required_buf_len();
+        size_t req_len = get_required_buf_len();
         
         if (req_len == 0) {
             throw std::length_error("internal size error");
@@ -167,44 +173,49 @@ public:
             throw std::invalid_argument("nullptr");
         }
 
-        int ival;
-        unsigned short sval;
+        int32 ival;
+        uint16 sval;
 
         ival = htonl(m_af);
-        memcpy(buf, &ival, sizeof(int));
-        buf += sizeof(int);
+        memcpy(buf, &ival, sizeof(int32));
+        buf += sizeof(int32);
 
         ival = htonl(m_type);
-        memcpy(buf, &ival, sizeof(int));
-        buf += sizeof(int);
+        memcpy(buf, &ival, sizeof(int32));
+        buf += sizeof(int32);
 
         if (m_af == AF_INET) {
             memcpy(buf, m_addr, PL_IPv4_ADDR_LEN);
             buf += PL_IPv4_ADDR_LEN;
         }
-        else if (m_af == AF_INET) {
+        else if (m_af == AF_INET6) {
             memcpy(buf, m_addr, PL_IPv6_ADDR_LEN);
             buf += PL_IPv6_ADDR_LEN;
         }
 
         sval = htons(m_portnum);
-        memcpy(buf, &sval, sizeof(unsigned short));
-        buf += sizeof(unsigned short);
+        memcpy(buf, &sval, sizeof(uint16));
+        buf += sizeof(uint16);
 
         sval = 0;
-        memcpy(buf, &sval, sizeof(unsigned short));
+        memcpy(buf, &sval, sizeof(uint16));
+        if (m_af == AF_INET6) {
+            ival = 0;
+            memcpy(buf, &ival, sizeof(int32));
+        }
     }
 
-    unsigned get_addr_len() const  {
+    size_t get_addr_len() const  {
         if (m_af==AF_INET) return PL_IPv4_ADDR_LEN;
         if (m_af==AF_INET6) return PL_IPv6_ADDR_LEN;
         return 0;
     }
 
-    unsigned get_required_buf_len() const  {
-        unsigned len = 2 * sizeof(int) + 2 * sizeof(short);
+    size_t get_required_buf_len() const  {
+        unsigned len = 2 * sizeof(int32) + 2 * sizeof(int16);
         if (m_af==AF_INET) return PL_IPv4_ADDR_LEN + len;
-        if (m_af==AF_INET6) return PL_IPv6_ADDR_LEN + len;
+        // Additional int for reserved in AF_INET6
+        if (m_af==AF_INET6) return PL_IPv6_ADDR_LEN + len + sizeof(int32);
         return 0;
     }
 

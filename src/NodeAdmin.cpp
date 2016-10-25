@@ -90,25 +90,25 @@ int main(int argc, char* argv[])
 #define SHM_MODE    0400    /*User read*/
     shmid = shmget(ipckey, 0, SHM_MODE);
     if (shmid == -1) {
-        getlog()->sendlog(FATAL, "%s: failed to get memory, errno=%d:%s\n",
+        getlog()->sendlog(LogLevel::FATAL, "%s: failed to get memory, errno=%d:%s\n",
                                  argv[0], errno, strerror(errno));
         return 0;
     }
 
     addr = shmat(shmid, nullptr, SHM_RDONLY);
     if (addr == (void*)-1) {
-        getlog()->sendlog(FATAL, "%s: failed to attach memory, errno=%d:%s\n",
+        getlog()->sendlog(LogLevel::FATAL, "%s: failed to attach memory, errno=%d:%s\n",
                                  argv[0], errno, strerror(errno));
         return 0;
     }
 
     MemberList mgrinfo(nullptr);
     if (!mgrinfo.attach(addr)) {
-        getlog()->sendlog(FATAL, "Load info failed\n");
+        getlog()->sendlog(LogLevel::FATAL, "Load info failed\n");
         return 0;
     }
-    getlog()->sendlog(FATAL, "Magic number=0X%lX\n", mgrinfo.get_magic_number());
-    getlog()->sendlog(FATAL, "Running status=%s\n", 
+    getlog()->sendlog(LogLevel::FATAL, "Magic number=0X%lX\n", mgrinfo.get_magic_number());
+    getlog()->sendlog(LogLevel::FATAL, "Running status=%s\n", 
                              mgrinfo.get_running_status() == PL_RUNNING_ST_RUN ? "running" : "not running");
 
 }

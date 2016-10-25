@@ -17,6 +17,9 @@
 #include "stdinclude.h"
 #include "messages.h"
 #include "pladdress.h"
+#include "MsgCommon.h"
+
+#include <vector>
 
 /*
  *******************************************************************************
@@ -32,8 +35,8 @@
 
 class JoinResponseMessage : public Message{
 public:
-    JoinResponseMessage(unsigned char* msg, unsigned long sz);
-    JoinResponseMessage(int af, unsigned short port, unsigned char* ip);
+    JoinResponseMessage(unsigned char* msg, size_t sz);
+    JoinResponseMessage(MsgStatus status, std::vector< HeartMsgStruct > & ms);
     ~JoinResponseMessage();
 
     JoinResponseMessage(const JoinResponseMessage& other) = delete;
@@ -42,21 +45,36 @@ public:
     JoinResponseMessage( JoinResponseMessage&& other);
     JoinResponseMessage& operator=(JoinResponseMessage&& other);
 
-    virtual unsigned long get_bodysize() const;
+    virtual size_t get_bodysize() const;
 
-    virtual int build_msg_body(unsigned char* buf, unsigned long size);
+    virtual int build_msg_body(unsigned char* buf, size_t size);
 
-    virtual void parse_msg_body(unsigned char* buf, unsigned long size) 
+    virtual void parse_msg_body(unsigned char* buf, size_t size) 
                               throw(parse_error);
 
     virtual void dump_body(int (*output)(const char*, ...)=printf,
                            bool verbose=false) const;
 
-    void set_status(int status);
-    int  get_status() const;
+    int set_status(MsgStatus status) {
+        if ((status < MsgStatus::PLUTO_FIRST) || (status >= MsgStatus::PLUTO_LAST)) {
+            return -1;
+        }
+        m_status = status;
+        return 0;
+    }
+
+    int set_members(std::vector< HeartMsgStruct > & ms);
+
+    int add_members(HeartMsgStruct & hb);
+
+    MsgStatus  get_status() const {
+        return m_status;
+    }
+
+    std::vector< HeartMsgStruct > get_members();
 private:
-    int     m_status;
-    Address m_addr;
+    MsgStatus m_status;
+    std::vector< HeartMsgStruct > m_members;
 };
 
 /*
@@ -65,5 +83,5 @@ private:
  *******************************************************************************
  */
 
-#endif // _JOIN_REQ_MSG_H_
+#endif // _JOIN_RESP_MSG_H_
 
