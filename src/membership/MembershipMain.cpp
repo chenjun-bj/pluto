@@ -70,23 +70,23 @@ int main(int argc, char* argv[])
         stream << desc << "\n";
 
         if (vm.count("help")) {
-            getlog()->sendlog(INFO, "%s", stream.str().c_str());
+            getlog()->sendlog(LogLevel::INFO, "%s", stream.str().c_str());
             return 0;
         }
         if (vm.count("ipckey")) {
-            getlog()->sendlog(INFO, "%d", vm["ipckey"].as<int>());
+            getlog()->sendlog(LogLevel::INFO, "%d", vm["ipckey"].as<int>());
         }
         else {
-            getlog()->sendlog(ERROR, "Missing ipckey\nUsage: %s option\n%s\n", 
+            getlog()->sendlog(LogLevel::ERROR, "Missing ipckey\nUsage: %s option\n%s\n", 
                                      argv[0], 
                                      stream.str().c_str());
             return 0;
         }
         if (vm.count("config")) {
-            getlog()->sendlog(INFO, "%s", vm["config"].as<string>().c_str());
+            getlog()->sendlog(LogLevel::INFO, "%s", vm["config"].as<string>().c_str());
         }
         else {
-            getlog()->sendlog(ERROR, "Missing config\nUsage: %s option\n%s\n", 
+            getlog()->sendlog(LogLevel::ERROR, "Missing config\nUsage: %s option\n%s\n", 
                                      argv[0], 
                                      stream.str().c_str());
             return 0;

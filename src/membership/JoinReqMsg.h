@@ -32,7 +32,7 @@
 
 class JoinRequestMessage : public Message{
 public:
-    JoinRequestMessage(unsigned char* msg, size_t sz);
+    JoinRequestMessage(unsigned char* msg, size_t sz, bool managebuf = true);
     JoinRequestMessage(int af, unsigned short port, unsigned char* ip);
     ~JoinRequestMessage();
 

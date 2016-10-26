@@ -29,8 +29,9 @@
  *******************************************************************************
  */
 
-JoinRequestMessage::JoinRequestMessage(unsigned char* msg, size_t sz) : 
-   Message(msg, sz),
+JoinRequestMessage::JoinRequestMessage(unsigned char* msg, size_t sz, 
+                                       bool managebuf) : 
+   Message(msg, sz, managebuf),
    m_addr(msgbodyptr(), msgbodysize())
 {
    //parse_msg();

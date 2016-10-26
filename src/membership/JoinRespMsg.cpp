@@ -29,8 +29,9 @@
  *******************************************************************************
  */
 
-JoinResponseMessage::JoinResponseMessage(unsigned char* msg, size_t sz) : 
-   Message(msg, sz),
+JoinResponseMessage::JoinResponseMessage(unsigned char* msg, size_t sz, 
+                                         bool managebuf) : 
+   Message(msg, sz, managebuf),
    m_status(MsgStatus::OK)
 {
    //parse_msg();
@@ -38,6 +39,13 @@ JoinResponseMessage::JoinResponseMessage(unsigned char* msg, size_t sz) :
 
 JoinResponseMessage::JoinResponseMessage(MsgStatus status,
                                          std::vector< HeartMsgStruct > & ms) :
+   Message(MsgType::JOINRESP),
+   m_members(ms)
+{
+    set_status(status);
+}
+
+JoinResponseMessage::JoinResponseMessage(MsgStatus status) : 
    Message(MsgType::JOINRESP)
 {
     set_status(status);
@@ -154,10 +162,23 @@ void JoinResponseMessage::parse_msg_body(unsigned char* buf, size_t size)
 void JoinResponseMessage:: dump_body(int (*output)(const char*, ...),
                                     bool verbose) const
 {
-    output("Status: %d\n", m_status);
+    output("Status      : %d\n", m_status);
+    output("Member count: %d\n", m_members.size());
     for (auto hb : m_members) {
         hb.dump(output);
     }
+}
+
+int JoinResponseMessage::set_members(std::vector< HeartMsgStruct > & ms)
+{
+    m_members = move(ms);
+    return 0;
+}
+
+int JoinResponseMessage::add_member( HeartMsgStruct & hb)
+{
+    m_members.push_back(hb);
+    return 0;
 }
 
 

@@ -35,8 +35,10 @@
 
 class JoinResponseMessage : public Message{
 public:
-    JoinResponseMessage(unsigned char* msg, size_t sz);
-    JoinResponseMessage(MsgStatus status, std::vector< HeartMsgStruct > & ms);
+    JoinResponseMessage(unsigned char* msg, size_t sz, bool managebuf = true);
+    JoinResponseMessage(MsgStatus status, 
+                        std::vector< HeartMsgStruct > & ms);
+    JoinResponseMessage(MsgStatus status);
     ~JoinResponseMessage();
 
     JoinResponseMessage(const JoinResponseMessage& other) = delete;
@@ -65,13 +67,15 @@ public:
 
     int set_members(std::vector< HeartMsgStruct > & ms);
 
-    int add_members(HeartMsgStruct & hb);
+    int add_member(HeartMsgStruct & hb);
 
     MsgStatus  get_status() const {
         return m_status;
     }
 
-    std::vector< HeartMsgStruct > get_members();
+    std::vector< HeartMsgStruct > get_members() {
+        return m_members;
+    }
 private:
     MsgStatus m_status;
     std::vector< HeartMsgStruct > m_members;

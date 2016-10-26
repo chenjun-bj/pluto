@@ -87,19 +87,19 @@ inline std::string get_desc_msgtype(MsgType type)
 
 class Message {
 public:
-    Message(unsigned char* msg, size_t sz) :
-       m_pbuf(msg), m_msgsize(sz) {
-        //parse_msg();
+    Message(unsigned char* msg, size_t sz, bool managebuf = true) :
+       m_pbuf(msg), m_msgsize(sz), m_managebuf(managebuf) {
+        m_hdr = { 0 };
     }
 
-    Message(MsgType type, int version=PLUTO_CURRENT_VERSION, int magic=PLUTO_MSG_MAGIC): m_pbuf(nullptr) {
+    Message(MsgType type, int version=PLUTO_CURRENT_VERSION, int magic=PLUTO_MSG_MAGIC): m_pbuf(nullptr), m_managebuf(false)  {
         m_hdr.magic   = magic;
         m_hdr.version = version;
         m_hdr.type    = static_cast<int>(type);
     }
 
     virtual ~Message() {
-        if (m_pbuf) {
+        if (m_pbuf && m_managebuf) {
             delete [] m_pbuf;
         }
     }
@@ -107,17 +107,21 @@ public:
     Message(const Message& other) = delete;
     Message& operator=(const Message& other) = delete;
 
-    Message(Message&& other) : m_pbuf(other.m_pbuf), m_msgsize(0), m_hdr(other.m_hdr) {
+    Message(Message&& other) : m_pbuf(other.m_pbuf), 
+                               m_msgsize(0), 
+                               m_managebuf(other.m_managebuf),
+                               m_hdr(other.m_hdr) {
         other.m_pbuf = nullptr;
     }
 
     Message& operator=(Message&& other) {
         if (this != &other) {
-            if (m_pbuf) delete [] m_pbuf;
+            if (m_pbuf && m_managebuf) delete [] m_pbuf;
             m_pbuf = other.m_pbuf;
+            m_managebuf  = other.m_managebuf;
             other.m_pbuf = nullptr;
             m_hdr = other.m_hdr;
-            m_msgsize = 0;
+            m_msgsize  = other.m_msgsize;
         }
         return *this;
     }
@@ -143,13 +147,14 @@ public:
         if (m_msgsize < MSGHDRSZ) {
             return -1;
         }
-        if (m_pbuf) {
+        if (m_pbuf && m_managebuf) {
             delete [] m_pbuf;
         }
         m_pbuf = new(std::nothrow) unsigned char[m_msgsize];
         if (m_pbuf == nullptr) {
             return -1;
         } 
+        m_managebuf = true;
 
         int rc = build_msg_hdr();
         if (rc != 0) {
@@ -231,9 +236,9 @@ public:
 
     void dump_hdr(int (*output)(const char*, ...)=printf, 
                   bool verbose=false) const {
-        output("Magic  : %0X\n", get_magic());
-        output("Version: %0X\n", get_version());
-        output("Type:    %s\n", get_desc_msgtype(get_msgtype()).c_str());
+        output("Magic   : %0X\n", get_magic());
+        output("Version : %0X\n", get_version());
+        output("MsgType : %s\n", get_desc_msgtype(get_msgtype()).c_str());
     }
 
     virtual void dump_body(int (*output)(const char*, ...)=printf,
@@ -255,6 +260,7 @@ public:
 private:
     unsigned char* m_pbuf;
     size_t         m_msgsize;
+    bool           m_managebuf;
     MsgCommonHdr   m_hdr;
 };
 
