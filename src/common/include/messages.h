@@ -96,6 +96,7 @@ public:
         m_hdr.magic   = magic;
         m_hdr.version = version;
         m_hdr.type    = static_cast<int>(type);
+        m_hdr.reserved= 0;
     }
 
     virtual ~Message() {

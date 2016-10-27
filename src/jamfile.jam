@@ -8,5 +8,6 @@ exe pladmin
         : <threading>multi <library>/boost//program_options
 	;
 exe test 
-	: test.cpp  /pluto/common//plutcom /pluto/common//plutlog
+	: test.cpp  [ glob membership/*.cpp : membership/MembershipMain.cpp ] /pluto/common//plutcom /pluto/common//plutlog
+        : <include>membership
 	;
