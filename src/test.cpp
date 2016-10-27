@@ -9,6 +9,7 @@
 #include "JoinReqMsg.h"
 #include "JoinRespMsg.h"
 #include "HeartbeatMsg.h"
+#include "PeerLeaveMsg.h"
 
 using namespace std;
 
@@ -41,9 +42,17 @@ void test_joinreq_msg()
    
     JoinRequestMessage req(AF_INET, 1234, addr);
     req.build_msg();
+    puts("Join request message...");
     req.dump();
 
-    JoinRequestMessage *rcv =new JoinRequestMessage(req.get_raw(), req.get_bodysize()+16);
+    JoinRequestMessage other(std::move(req));
+    puts("Copy message...");
+    other.dump();
+    puts("After copy, orignal message...");
+    req.dump();
+
+    puts("Construct from raw buffer...");
+    JoinRequestMessage *rcv =new JoinRequestMessage(other.get_raw(), other.get_bodysize()+16);
     rcv->parse_msg();
     rcv->dump();
 }
@@ -143,9 +152,34 @@ void test_heartbeat_msg()
     peer.dump();
 }
 
+void test_peerleave_msg()
+{
+    unsigned char addr[4];
+
+    addr[0] = 0x7F;
+    addr[1] = 0;
+    addr[2] = 0;
+    addr[3] = 1;
+  
+    PeerLeaveMessage::LeaveReason reason = 
+                  PeerLeaveMessage::LeaveReason::ERROR_DOWN; 
+    PeerLeaveMessage leave(reason, AF_INET, 1234, addr);
+    leave.build_msg();
+    leave.dump();
+
+    unsigned char* buf = leave.get_raw();
+    size_t sz = leave.get_bodysize() + 16;
+    dump_memory("PEERLEAVE MSG", (const char*)buf, sz);
+    PeerLeaveMessage *rcv =new PeerLeaveMessage(buf, sz);
+    rcv->parse_msg();
+    rcv->dump();
+}
+
 int main(int argc, char* argv[])
 {
+    test_joinreq_msg();
     //test_joinresp_msg();
-    test_heartbeat_msg();
+    //test_heartbeat_msg();
+    //test_peerleave_msg();
 }
 
