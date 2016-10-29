@@ -21,13 +21,14 @@
 #include <stdio.h>
 
 #include "plexcept.h"
+#include "pltypes.h"
 
 /**
  *******************************************************************************
  * Constants                                                                   *
  *******************************************************************************
  */
-enum class MsgType : int {
+enum class MsgType : uint32 {
     PLUTO_FIRST=0,
     JOINREQ,
     JOINRESP,
@@ -55,10 +56,10 @@ enum class MsgStatus : int {
 #define PLUTO_MSG_MAGIC   0X504C5401
 
 typedef struct {
-    int magic;
-    int version;
-    int type;
-    int reserved;
+    uint32 magic;
+    uint32 version;
+    uint32 type;
+    uint32 size;  // Total message length
 } MsgCommonHdr;
 
 /**
@@ -88,15 +89,15 @@ inline std::string get_desc_msgtype(MsgType type)
 class Message {
 public:
     Message(unsigned char* msg, size_t sz, bool managebuf = true) :
-       m_pbuf(msg), m_msgsize(sz), m_managebuf(managebuf) {
+       m_pbuf(msg), m_bufsize(sz), m_managebuf(managebuf) {
         m_hdr = { 0 };
     }
 
-    Message(MsgType type, int version=PLUTO_CURRENT_VERSION, int magic=PLUTO_MSG_MAGIC): m_pbuf(nullptr), m_managebuf(false)  {
+    Message(MsgType type, int version=PLUTO_CURRENT_VERSION, int magic=PLUTO_MSG_MAGIC): m_pbuf(nullptr), m_bufsize(0), m_managebuf(false)  {
         m_hdr.magic   = magic;
         m_hdr.version = version;
         m_hdr.type    = static_cast<int>(type);
-        m_hdr.reserved= 0;
+        m_hdr.size    = 0;  // The size is computed at build stage
     }
 
     virtual ~Message() {
@@ -109,7 +110,7 @@ public:
     Message& operator=(const Message& other) = delete;
 
     Message(Message&& other) : m_pbuf(other.m_pbuf), 
-                               m_msgsize(0), 
+                               m_bufsize(0), 
                                m_managebuf(other.m_managebuf),
                                m_hdr(other.m_hdr) {
         other.m_pbuf = nullptr;
@@ -122,7 +123,7 @@ public:
             m_managebuf  = other.m_managebuf;
             other.m_pbuf = nullptr;
             m_hdr = other.m_hdr;
-            m_msgsize  = other.m_msgsize;
+            m_bufsize  = other.m_bufsize;
         }
         return *this;
     }
@@ -136,22 +137,22 @@ public:
 
     size_t msgbodysize() {
         const unsigned MSGHDRSZ = sizeof(MsgCommonHdr);
-        if (m_msgsize>MSGHDRSZ) {
-            return m_msgsize - MSGHDRSZ;
+        if (m_bufsize>MSGHDRSZ) {
+            return m_bufsize - MSGHDRSZ;
         }
         return 0;
     }
 
     int build_msg() {
         const unsigned MSGHDRSZ = sizeof(MsgCommonHdr);
-        m_msgsize = get_bodysize() + MSGHDRSZ;
-        if (m_msgsize < MSGHDRSZ) {
+        m_bufsize = get_bodysize() + MSGHDRSZ;
+        if (m_bufsize < MSGHDRSZ) {
             return -1;
         }
         if (m_pbuf && m_managebuf) {
             delete [] m_pbuf;
         }
-        m_pbuf = new(std::nothrow) unsigned char[m_msgsize];
+        m_pbuf = new(std::nothrow) unsigned char[m_bufsize];
         if (m_pbuf == nullptr) {
             return -1;
         } 
@@ -162,7 +163,7 @@ public:
             return -1;
         }
 
-        rc = build_msg_body(m_pbuf+MSGHDRSZ, m_msgsize-MSGHDRSZ);
+        rc = build_msg_body(m_pbuf+MSGHDRSZ, m_bufsize-MSGHDRSZ);
         if (rc != 0) {
             return -1;
         }
@@ -173,6 +174,7 @@ public:
     int build_msg_hdr() {
         const unsigned MSGHDRSZ = sizeof(MsgCommonHdr);
         if (m_pbuf) {
+            m_hdr.size = m_bufsize;
             memcpy(m_pbuf, &m_hdr, MSGHDRSZ);
             return 0;
         }
@@ -187,7 +189,10 @@ public:
         if (m_pbuf) {
             const unsigned MSGHDRSZ = sizeof(MsgCommonHdr);
             parse_msg_hdr();
-            parse_msg_body(m_pbuf+MSGHDRSZ, m_msgsize-MSGHDRSZ);
+            if (m_hdr.size < m_bufsize) {
+                throw parse_error("in-complete message");
+            }
+            parse_msg_body(m_pbuf+MSGHDRSZ, m_bufsize-MSGHDRSZ);
         } else {
             throw parse_error("null buffer");
         }
@@ -199,7 +204,7 @@ public:
         }
 
         const unsigned MSGHDRSZ = sizeof(MsgCommonHdr);
-        if (m_msgsize < MSGHDRSZ) {
+        if (m_bufsize < MSGHDRSZ) {
             throw parse_error("in-complete header received");
         }
 
@@ -210,14 +215,15 @@ public:
         m_hdr.magic   = pHdr->magic;
         m_hdr.version = pHdr->version;
 
-        int low, hi;
-        low = static_cast<int>(MsgType::PLUTO_FIRST);
-        hi  = static_cast<int>(MsgType::PLUTO_LAST);
+        uint32 low, hi;
+        low = static_cast<uint32>(MsgType::PLUTO_FIRST);
+        hi  = static_cast<uint32>(MsgType::PLUTO_LAST);
         if ((pHdr->type <= low) || (pHdr->type >= hi)) {
             std::string errmsg="invalid type value " + std::to_string(pHdr->type);
             throw parse_error(errmsg.c_str());
         }
         m_hdr.type = pHdr->type;
+        m_hdr.size = pHdr->size;
     }
 
     virtual void parse_msg_body(unsigned char*, size_t) 
@@ -227,7 +233,7 @@ public:
               bool verbose=false) const {
         if (m_pbuf) {
             if (verbose) {
-                dump_memory(NULL, (const char*)m_pbuf, m_msgsize);
+                dump_memory(NULL, (const char*)m_pbuf, m_bufsize);
             }
             dump_hdr(output, verbose);
             dump_body(output, verbose);
@@ -240,6 +246,7 @@ public:
         output("Magic   : %0X\n", get_magic());
         output("Version : %0X\n", get_version());
         output("MsgType : %s\n", get_desc_msgtype(get_msgtype()).c_str());
+        output("Length  : %d\n", m_hdr.size);
     }
 
     virtual void dump_body(int (*output)(const char*, ...)=printf,
@@ -260,7 +267,7 @@ public:
     }
 private:
     unsigned char* m_pbuf;
-    size_t         m_msgsize;
+    size_t         m_bufsize;
     bool           m_managebuf;
     MsgCommonHdr   m_hdr;
 };
