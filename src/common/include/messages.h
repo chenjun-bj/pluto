@@ -17,6 +17,9 @@
  */
 #include <string>
 #include <new>
+#include <tuple>
+
+#include <boost/logic/tribool.hpp>
 
 #include <stdio.h>
 
@@ -96,7 +99,7 @@ public:
     Message(MsgType type, int version=PLUTO_CURRENT_VERSION, int magic=PLUTO_MSG_MAGIC): m_pbuf(nullptr), m_bufsize(0), m_managebuf(false)  {
         m_hdr.magic   = magic;
         m_hdr.version = version;
-        m_hdr.type    = static_cast<int>(type);
+        m_hdr.type    = static_cast<uint32>(type);
         m_hdr.size    = 0;  // The size is computed at build stage
     }
 
@@ -277,6 +280,36 @@ private:
  * Function declaractions                                                      *
  *******************************************************************************
  */
+
+inline std::tuple<boost::tribool, size_t, MsgType>
+try_parse(const unsigned char* buf, size_t size) 
+{
+    if (buf == nullptr) {
+        return std::make_tuple( false, 0, MsgType::INVTYPE );
+    }
+
+    if (size < sizeof(MsgCommonHdr)) {
+        return std::make_tuple( boost::indeterminate, 0, MsgType::INVTYPE );
+    }
+
+    const MsgCommonHdr *pHdr = reinterpret_cast<const MsgCommonHdr*>(buf);
+    if (pHdr == nullptr) {
+        return std::make_tuple( false, 0, MsgType::INVTYPE );
+    }
+
+    uint32 low, hi;
+    low = static_cast<uint32>(MsgType::PLUTO_FIRST);
+    hi  = static_cast<uint32>(MsgType::PLUTO_LAST);
+    if ((pHdr->type <= low) || (pHdr->type >= hi)) {
+        return std::make_tuple( false, 0, MsgType::INVTYPE );
+    }
+
+    if (size < pHdr->size) {
+        return std::make_tuple( boost::indeterminate, pHdr->size, MsgType::INVTYPE );
+    }
+
+    return std::make_tuple( true, pHdr->size, static_cast<MsgType>(pHdr->type));
+}
 
 #endif // _MESSAGES_H_
 

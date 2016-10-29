@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <vector>
 #include <string>
+#include <iostream>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -10,6 +11,8 @@
 #include "JoinRespMsg.h"
 #include "HeartbeatMsg.h"
 #include "PeerLeaveMsg.h"
+
+#include "MembershipMsgFact.h"
 
 using namespace std;
 
@@ -52,9 +55,19 @@ void test_joinreq_msg()
     req.dump();
 
     puts("Construct from raw buffer...");
-    JoinRequestMessage *rcv =new JoinRequestMessage(other.get_raw(), other.get_bodysize()+16);
-    rcv->parse_msg();
-    rcv->dump();
+
+    bool result;
+    Message * pmsg = nullptr;
+    MembershipMessageFactory msgfact;
+    //JoinRequestMessage *rcv =new JoinRequestMessage(other.get_raw(), other.get_bodysize()+16);
+    //rcv->parse_msg();
+    std::tie( result, pmsg ) = msgfact.extract(other.get_raw(), other.get_bodysize()+16);
+    if (result) {
+        pmsg -> dump();
+    }
+    if (pmsg) {
+        delete pmsg;
+    }
 }
 
 void test_msg_common()
@@ -106,9 +119,17 @@ void test_joinresp_msg()
 
     dump_memory("RESPONSE MSG", (const char*)buf, len);
 
-    JoinResponseMessage peer(buf, len, false);
-    peer.parse_msg();
-    peer.dump();
+    bool result;
+    Message * pmsg = nullptr;
+    MembershipMessageFactory msgfact;
+
+    std::tie( result, pmsg ) = msgfact.extract(buf, len);
+    if (result) {
+        pmsg -> dump();
+    }
+    if (pmsg) {
+        delete pmsg;
+    }
 }
 
 void test_heartbeat_msg()
@@ -147,9 +168,17 @@ void test_heartbeat_msg()
 
     dump_memory("RESPONSE MSG", (const char*)buf, len);
 
-    HeartbeatMessage peer(buf, len, false);
-    peer.parse_msg();
-    peer.dump();
+    bool result;
+    Message * pmsg = nullptr;
+    MembershipMessageFactory msgfact;
+
+    std::tie( result, pmsg ) = msgfact.extract(buf, len);
+    if (result) {
+        pmsg -> dump();
+    }
+    if (pmsg) {
+        delete pmsg;
+    }
 }
 
 void test_peerleave_msg()
@@ -168,18 +197,39 @@ void test_peerleave_msg()
     leave.dump();
 
     unsigned char* buf = leave.get_raw();
-    size_t sz = leave.get_bodysize() + 16;
-    dump_memory("PEERLEAVE MSG", (const char*)buf, sz);
-    PeerLeaveMessage *rcv =new PeerLeaveMessage(buf, sz);
-    rcv->parse_msg();
-    rcv->dump();
+    size_t len = leave.get_bodysize() + 16;
+    dump_memory("PEERLEAVE MSG", (const char*)buf, len);
+
+    bool result;
+    Message * pmsg = nullptr;
+    MembershipMessageFactory msgfact;
+
+    std::tie( result, pmsg ) = msgfact.extract(buf, len);
+    if (result) {
+        pmsg -> dump();
+    }
+    if (pmsg) {
+        delete pmsg;
+    }
 }
 
 int main(int argc, char* argv[])
 {
+    cout << "test join request message\n";
+    cout << "----------------------------------------------------\n";
     test_joinreq_msg();
-    //test_joinresp_msg();
-    //test_heartbeat_msg();
-    //test_peerleave_msg();
+    cout << "----------------------------------------------------\n";
+    cout << "test join response message\n";
+    cout << "----------------------------------------------------\n";
+    test_joinresp_msg();
+    cout << "----------------------------------------------------\n";
+    cout << "test heartbeat message\n";
+    cout << "----------------------------------------------------\n";
+    test_heartbeat_msg();
+    cout << "----------------------------------------------------\n";
+    cout << "test peer leave message\n";
+    cout << "----------------------------------------------------\n";
+    test_peerleave_msg();
+    cout << "----------------------------------------------------\n";
 }
 
