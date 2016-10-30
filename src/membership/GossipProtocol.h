@@ -1,27 +1,26 @@
 /**
  *******************************************************************************
- * MembershipServer.h                                                          *
+ * GossipProtocol.h                                                            *
  *                                                                             *
- * Membership server:                                                          *
- *   - Membership server to perform netwrok operations                         *
+ * Gossip protocol:                                                            *
+ *   - Gossip protocol that implements membership protocol                     *
  *******************************************************************************
  */
 
-#ifndef _MEMBER_SHIP_SERVER_H_
-#define _MEMBER_SHIP_SERVER_H_
+#ifndef _GOSSIP_PROTOCOL_H_
+#define _GOSSIP_PROTOCOL_H_
 
 /*
  *******************************************************************************
  *  Headers                                                                    *
  *******************************************************************************
  */
-
-#include <boost/asio.hpp>
-
 #include "stdinclude.h"
 #include "memberlist.h"
-#include "MembershipMsgFact.h"
+#include "messages.h"
+
 #include "MembershipProtocol.h"
+
 /*
  *******************************************************************************
  *  Forward declaraction                                                       *
@@ -34,41 +33,37 @@
  *******************************************************************************
  */
 
-class MembershipServer {
+class GossipProtocol: public MembershipProtocol {
 public:
-   explicit MembershipServer(ConfigPortal * pcfg, 
-                             MemberList   * pmemlist,
-                             size_t thread_pool_size /*Not support*/);
- 
-   void run();
+    GossipProtocol(MemberList * mlst, ConfigPortal * cfg);
+    virtual ~GossipProtocol();
 
+    int handle_messages(Message* msg);
+    // Protocol sends heartbeat message periodically and 
+    // check member health 
+    int handle_timer(int id);
+
+    // self up, should introduce self to group
+    virtual int node_up();
+    // self down, should notify group that I'm leaving
+    virtual int node_down();
+    // detect (other) node errors
+    virtual int detect_node_error();
+    // disseminate error info
+    virtual int disseminate_error();
+protected:
+    void handle_joinrequest(Message * msg);
+    void handle_joinresponse(Message * msg);
+    void handle_heartbeat(Message * msg);
+    void handle_peerleave(Message * msg);
+
+    void send_joinrequest();
+    void send_joinresponse();
+    void send_heartbeat();
+    void send_peerleave();
 private:
-   void do_receive();
- 
-   void do_send();
- 
-   // Handle a request to stop the server.
-   void handle_stop();
-
-private:
-   ConfigPortal * m_pcfg;
-
-   MembershipProtocol * m_prot;
-
-   MembershipMessageFactory m_fact;
-
-   // The number of threads that will call io_service::run().
-   std::size_t m_thread_pool_sz;
-
-   // The io_service used to perform asynchronous operations.
-   boost::asio::io_service m_io_service;
-
-   // The signal_set is used to register for process termination notifications.
-   boost::asio::signal_set m_signals;
-
-   // Acceptor used to listen for incoming connections.
-   boost::asio::ip::udp::socket m_udpsock;
-
+    MemberList   * m_pmember;
+    ConfigPortal * m_pconfig;
 };
 
 /*
@@ -77,5 +72,5 @@ private:
  *******************************************************************************
  */
 
-#endif // _MEMBER_SHIP_SERVER_H_
+#endif // _GOSSIP_PROTOCOL_H_
 

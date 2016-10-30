@@ -1,5 +1,5 @@
 
 exe plmembership 
 	: [ glob *.cpp ]  /pluto/common//plutcom /pluto/common//plutlog
-        : <threading>multi <library>/boost//program_options
+        : <threading>multi <library>/boost//program_options <library>/boost//system
 	;

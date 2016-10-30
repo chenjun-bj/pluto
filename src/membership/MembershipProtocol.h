@@ -18,6 +18,7 @@
  */
 #include "stdinclude.h"
 #include "memberlist.h"
+#include "messages.h"
 
 /*
  *******************************************************************************
@@ -33,11 +34,23 @@
 
 class MembershipProtocol{
 public:
-    MembershipProtocol();
-    virtual ~MembershipProtocol();
+    MembershipProtocol() {
+    }
+    virtual ~MembershipProtocol() {
+    }
 
-    int handleMessages(unsigned char* buf, size_t len) = 0;
-    int handleTimerEvent(int id) = 0;
+    virtual int handle_messages(Message* msg) = 0;
+    // Protocol sends heartbeat message periodically and 
+    // check member health 
+    virtual int handle_timer(int id) = 0;
+    // self up, should introduce self to group
+    virtual int node_up() = 0;
+    // self down, should notify group that I'm leaving
+    virtual int node_down() = 0;
+    // detect (other) node errors
+    virtual int detect_node_error() = 0;
+    // disseminate error info
+    virtual int disseminate_error() = 0;
 };
 
 /*
