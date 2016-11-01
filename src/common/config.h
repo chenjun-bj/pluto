@@ -54,6 +54,10 @@ public:
 
     long get_ringsize() const;
 
+    unsigned int get_membership_period() const {
+        return 5;
+    }
+
     /**/
     std::string get_logpath() const;
 

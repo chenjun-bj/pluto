@@ -72,18 +72,22 @@ int GossipProtocol::handle_messages(Message* msg)
 
 int GossipProtocol::handle_timer(int id)
 {
+    return 0;
 }
 
 int GossipProtocol::node_up()
 {
+    return 0;
 }
 
 int GossipProtocol::node_down()
 {
+    return 0;
 }
 
 int GossipProtocol::detect_node_error()
 {
+    return 0;
 }
 
 int GossipProtocol::disseminate_error()

@@ -15,11 +15,17 @@
  *  Headers                                                                    *
  *******************************************************************************
  */
+#include <map>
+#include <array>
+#include <string>
+#include <utility>
+#include <memory>
 
 #include <boost/asio.hpp>
 
 #include "stdinclude.h"
 #include "memberlist.h"
+#include "messages.h"
 #include "MembershipMsgFact.h"
 #include "MembershipProtocol.h"
 /*
@@ -45,23 +51,38 @@ public:
 private:
    void do_receive();
  
-   void do_send();
- 
-   // Handle a request to stop the server.
-   void handle_stop();
+   void do_send(Message * pmsg);
 
+   void handle_period_timer(); 
+
+   typedef std::pair<std::string, unsigned short> bufkey;
+   typedef std::map< bufkey,  unsigned char*,
+                    bool (*)(const bufkey& l, const bufkey& r) > buftype;
+
+   unsigned char* get_buffer(const boost::asio::ip::udp::endpoint & sender, size_t & sz);
+   void append_buffer(const boost::asio::ip::udp::endpoint & sender, 
+                      unsigned char* buf, size_t sz);
+   void empty_buffer(const boost::asio::ip::udp::endpoint & sender);
 private:
+   bool           m_done;
+
+#define MAX_RCV_BUF_LEN   8192
+   std::array<unsigned char, MAX_RCV_BUF_LEN > m_buf;
+   boost::asio::ip::udp::endpoint m_sender;
+
+   buftype        m_rcvbuf;
+
    ConfigPortal * m_pcfg;
 
-   MembershipProtocol * m_prot;
+   std::shared_ptr<MembershipProtocol> m_prot;
 
    MembershipMessageFactory m_fact;
 
    // The number of threads that will call io_service::run().
-   std::size_t m_thread_pool_sz;
+   //std::size_t m_thread_pool_sz;
 
    // The io_service used to perform asynchronous operations.
-   boost::asio::io_service m_io_service;
+   boost::asio::io_service m_io;
 
    // The signal_set is used to register for process termination notifications.
    boost::asio::signal_set m_signals;
@@ -69,6 +90,7 @@ private:
    // Acceptor used to listen for incoming connections.
    boost::asio::ip::udp::socket m_udpsock;
 
+   boost::asio::deadline_timer m_t;  // timer
 };
 
 /*

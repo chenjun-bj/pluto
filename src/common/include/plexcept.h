@@ -38,6 +38,16 @@
  *******************************************************************************
  */
 
+class config_error : public std::invalid_argument {
+public:
+    config_error(const char* errmsg): 
+       std::invalid_argument(errmsg) {
+    } 
+    config_error(const std::string & errmsg): 
+       std::invalid_argument(errmsg) {
+    } 
+};
+
 class parse_error : public std::runtime_error {
 public:
     parse_error(const char* errmsg): 

@@ -16,6 +16,8 @@
  *  Headers                                                                    *
  *******************************************************************************
  */
+#include <memory>
+
 #include "stdinclude.h"
 #include "memberlist.h"
 #include "messages.h"
@@ -32,7 +34,9 @@
  *******************************************************************************
  */
 
-class MembershipProtocol{
+class MembershipProtocol : 
+   public std::enable_shared_from_this<MembershipProtocol> 
+{
 public:
     MembershipProtocol() {
     }
