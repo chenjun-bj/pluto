@@ -17,6 +17,7 @@
  */
 #include <map>
 #include <array>
+#include <vector>
 #include <string>
 #include <utility>
 #include <memory>
@@ -56,7 +57,7 @@ private:
    void handle_period_timer(); 
 
    typedef std::pair<std::string, unsigned short> bufkey;
-   typedef std::map< bufkey,  unsigned char*,
+   typedef std::map< bufkey,  std::vector<unsigned char>,
                     bool (*)(const bufkey& l, const bufkey& r) > buftype;
 
    unsigned char* get_buffer(const boost::asio::ip::udp::endpoint & sender, size_t & sz);

@@ -14,11 +14,15 @@
  */
 #include "stdinclude.h"
 
+#include <algorithm>
+#include <iterator>
+
 #include <boost/asio.hpp>
 #include "MembershipServer.h"
 #include "GossipProtocol.h"
 
 using namespace boost::asio;
+using namespace std;
 
 /*
  *******************************************************************************
@@ -44,7 +48,7 @@ MembershipServer::MembershipServer(ConfigPortal * pcfg,
                   return false;
               }
               else {
-                  if (l.second <= r.second) {
+                  if (l.second < r.second) {
                       return true;
                   }
                   return false;
@@ -114,6 +118,7 @@ void MembershipServer::do_receive()
         boost::asio::buffer(m_buf), m_sender,
         [this](boost::system::error_code ec, std::size_t bytes_recvd)
         {
+          // Too complicate for a lambda function
           if (!ec && bytes_recvd > 0)
           {
             size_t size;
@@ -130,10 +135,12 @@ void MembershipServer::do_receive()
                 do_receive();
             }
             else {
-                empty_buffer(m_sender);
                 if (result) {
+                    pmsg->set_source(m_sender.address(), m_sender.port());
                     m_prot->handle_messages(pmsg);
                 }
+                // !!! the memory is freed !!!
+                empty_buffer(m_sender);
             }
           }
         });
@@ -142,6 +149,15 @@ void MembershipServer::do_receive()
 
 void MembershipServer::do_send(Message * pmsg)
 {
+    if (pmsg == nullptr) return;
+
+    pair<ip::address, unsigned short> dest = pmsg->get_destination();
+    ip::udp::endpoint dest_end(dest.first, dest.second);
+    m_udpsock.async_send_to(
+              boost::asio::buffer(pmsg->get_raw(), pmsg->get_size()),
+              dest_end,
+              [this](boost::system::error_code /*ec*/, std::size_t /*bytes_sent*/) {
+           });
 }
 
 void MembershipServer::handle_period_timer()
@@ -155,16 +171,41 @@ void MembershipServer::handle_period_timer()
 unsigned char* MembershipServer::get_buffer(const ip::udp::endpoint & sender, 
                                             size_t & sz)
 {
+    string ip = sender.address().to_string();
+    unsigned short port = sender.port();
+
+    auto&& it = m_rcvbuf.find(make_pair(ip, port));
+    if (it != m_rcvbuf.end()) {
+        sz = it->second.size();
+        return it->second.data();
+    }
+
     return nullptr;
 }
 
 void MembershipServer::append_buffer(const ip::udp::endpoint & sender, 
                                      unsigned char* buf, size_t sz)
 {
+    string ip = sender.address().to_string();
+    unsigned short port = sender.port();
+
+    auto key = make_pair(ip, port);
+    auto&& it = m_rcvbuf.find(key);
+    if (it != m_rcvbuf.end()) {
+        copy(buf, buf+sz, back_inserter(it->second));
+    }
+    else {
+        m_rcvbuf[key] = move(vector<unsigned char>(buf, buf+sz));
+    }
 }
 
 void MembershipServer::empty_buffer(const ip::udp::endpoint & sender)
 {
+    string ip = sender.address().to_string();
+    unsigned short port = sender.port();
+
+    auto key = make_pair(ip, port);
+    m_rcvbuf.erase(key);
 }
 
 /*

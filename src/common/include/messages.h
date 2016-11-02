@@ -18,10 +18,12 @@
 #include <string>
 #include <new>
 #include <tuple>
+#include <utility>
 
+#include <boost/asio.hpp>
 #include <boost/logic/tribool.hpp>
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "plexcept.h"
 #include "pltypes.h"
@@ -244,7 +246,7 @@ public:
         }
     }
 
-    void dump_hdr(int (*output)(const char*, ...)=printf, 
+    void dump_hdr(int (*output)(const char*, ...)=std::printf, 
                   bool verbose=false) const {
         output("Magic   : %0X\n", get_magic());
         output("Version : %0X\n", get_version());
@@ -268,11 +270,39 @@ public:
     unsigned char* get_raw() const {
         return m_pbuf;
     }
+
+    size_t get_size() const {
+        return m_bufsize;
+    }
+
+    void set_source(const boost::asio::ip::address & addr, unsigned short port) {
+        m_src_addr = addr;
+        m_src_port = port;
+    }
+
+    std::pair<boost::asio::ip::address, unsigned short>  get_source() const {
+        return std::make_pair(m_src_addr, m_src_port);
+    }
+
+    void set_destination(const boost::asio::ip::address & addr, unsigned short port) {
+        m_dest_addr = addr;
+        m_dest_port = port;
+    }
+
+    std::pair<boost::asio::ip::address, unsigned short>  get_destination() const {
+        return std::make_pair(m_dest_addr, m_dest_port);
+    }
+    
 private:
     unsigned char* m_pbuf;
     size_t         m_bufsize;
     bool           m_managebuf;
     MsgCommonHdr   m_hdr;
+
+    boost::asio::ip::address m_src_addr;
+    boost::asio::ip::address m_dest_addr;
+    unsigned short m_src_port;
+    unsigned short m_dest_port;
 };
 
 /**
