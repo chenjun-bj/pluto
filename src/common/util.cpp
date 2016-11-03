@@ -13,9 +13,10 @@
  */
 #include "util.h"
 
-#include <stdarg.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include <cstdarg>
+#include <cstdlib>
+#include <cctype>
+
 #include <signal.h>
 #include <syslog.h>
 #include <errno.h>
@@ -24,6 +25,8 @@
 #include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
+using namespace std;
 
 /*
  *******************************************************************************
@@ -197,3 +200,28 @@ void dump_memory(const char* cap, const char* data, unsigned long sz,
     }
 }
 
+boost::asio::ip::udp::endpoint ip2udpend(const string& ip, unsigned short port)
+{
+    using namespace boost::asio;
+
+    boost::system::error_code ec;
+    ip::address addr = ip::address::from_string(ip, ec);
+    boost::asio::detail::throw_error(ec, "ip");
+
+    ip::udp::endpoint ep(addr, port);
+
+    return ep;
+}
+
+boost::asio::ip::tcp::endpoint ip2tcpend(const string& ip, unsigned short port)
+{
+    using namespace boost::asio;
+
+    boost::system::error_code ec;
+    ip::address addr = ip::address::from_string(ip, ec);
+    boost::asio::detail::throw_error(ec, "ip");
+
+    ip::tcp::endpoint ep(addr, port);
+
+    return ep;
+}

@@ -27,6 +27,8 @@
  *******************************************************************************
  */
 
+class MembershipServer;
+
 /*
  *******************************************************************************
  *  Class declaraction                                                         *
@@ -35,7 +37,8 @@
 
 class GossipProtocol: public MembershipProtocol {
 public:
-    GossipProtocol(MemberList * mlst, ConfigPortal * cfg);
+    GossipProtocol(MemberList * mlst, ConfigPortal * cfg,
+                   MembershipServer * psvr);
     virtual ~GossipProtocol();
 
     int handle_messages(Message* msg);
@@ -61,9 +64,14 @@ protected:
     void send_joinresponse();
     void send_heartbeat();
     void send_peerleave();
+
+    Message * construct_heartbeat_msg();
 private:
     MemberList   * m_pmember;
     ConfigPortal * m_pconfig;
+    MembershipServer * m_pnet;
+
+    bool           m_ingroup;
 };
 
 /*

@@ -49,11 +49,11 @@ public:
  
    void run();
 
-private:
    void do_receive();
  
    void do_send(Message * pmsg);
 
+private:
    void handle_period_timer(); 
 
    typedef std::pair<std::string, unsigned short> bufkey;
@@ -92,6 +92,9 @@ private:
    boost::asio::ip::udp::socket m_udpsock;
 
    boost::asio::deadline_timer m_t;  // timer
+
+   std::map<unsigned long long, Message* > m_snd_que;
+   unsigned long long          m_snd_txid;
 };
 
 /*

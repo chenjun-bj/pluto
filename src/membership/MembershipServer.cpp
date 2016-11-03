@@ -17,6 +17,8 @@
 #include <algorithm>
 #include <iterator>
 
+#include <climits>
+
 #include <boost/asio.hpp>
 #include "MembershipServer.h"
 #include "GossipProtocol.h"
@@ -60,11 +62,13 @@ MembershipServer::MembershipServer(ConfigPortal * pcfg,
    m_io(),
    m_signals(m_io),
    m_udpsock(m_io),
-   m_t(m_io)
+   m_t(m_io),
+   m_snd_que(),
+   m_snd_txid(0)
 {
 
     if (m_pcfg->get_protocol() == "GOSSIP") {
-        m_prot = std::make_shared<GossipProtocol> (pmemlist, pcfg);
+        m_prot = std::make_shared<GossipProtocol> (pmemlist, pcfg, this);
     }
     else {
         throw config_error("Protocol not support");
@@ -153,10 +157,24 @@ void MembershipServer::do_send(Message * pmsg)
 
     pair<ip::address, unsigned short> dest = pmsg->get_destination();
     ip::udp::endpoint dest_end(dest.first, dest.second);
+
+    unsigned long long txid = m_snd_txid++;
+    m_snd_que[txid] = pmsg;
+
+    if (m_snd_txid == ULLONG_MAX) {
+        m_snd_txid = 0;
+        // TODO: what about if message of txid 0 has not sent complete?
+    }
+ 
     m_udpsock.async_send_to(
               boost::asio::buffer(pmsg->get_raw(), pmsg->get_size()),
               dest_end,
-              [this](boost::system::error_code /*ec*/, std::size_t /*bytes_sent*/) {
+              [this, txid](boost::system::error_code /*ec*/, std::size_t /*bytes_sent*/) {
+                  Message * todel = m_snd_que[txid];
+                  if (todel) {
+                      delete todel;
+                  }
+                  m_snd_que.erase(txid);
            });
 }
 
