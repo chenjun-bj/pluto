@@ -11,3 +11,7 @@ exe test
 	: test.cpp  [ glob membership/*.cpp : membership/MembershipMain.cpp ] /pluto/common//plutcom /pluto/common//plutlog
         : <include>membership
 	;
+exe tstmem 
+	: tstmem.cpp /pluto/common//plutcom /pluto/common//plutlog
+        : <include>membership
+        ;

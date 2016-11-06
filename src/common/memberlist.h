@@ -20,6 +20,9 @@
 #include <pthread.h>
 
 #include "pltypes.h"
+
+#include "entrytable.h"
+
 /*
  *******************************************************************************
  *  Macros                                                                     *
@@ -50,82 +53,6 @@
  *******************************************************************************
  */
 
-/**
-   Shared memory layout :
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |        8        16       24       32       40       48       56       |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                              MAGIC NUMBER                             |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |              IPCKEY               | Running status  |ST membr|ST store|
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |  PID of memebership process       |  PID of store process             |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                                 LOCK                                  |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                                 LOCK                                  |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                                 LOCK                                  |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                                 LOCK                                  |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                                 LOCK                                  |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                              RING  LENGTH                             |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |     Addr1 address family          |             Addr1 type            |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                       Default  join address 1                         |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                       Default  join address 1                         |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    | Addr1 portnumber|    Addr2 flag   |             Reserved              |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |     Addr2 address family          |             Addr2 type            |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                       Default  join address 2                         |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                       Default  join address 2                         |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    | Addr2 portnumber|                     Reserved                        |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                              Member size                              |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                             Member Entry  1                           |
-    |                                ... ...                                |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                                ... ...                                |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-  
-   Member entry layout: 
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |        8        16       24       32       40       48       56       |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                                  ID                                   |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |         Address family            |           Address type            |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                                Address                                |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                                Address                                |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |   Portnumber    |                       Reserved                      |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
-    |                               HashCode                                |
-    +--------+--------+--------+--------+--------+--------+--------+--------+
- */
-
-struct MemberEntry {
-    uint64  id;
-    uint32  af;
-    uint32  type;
-    uint8   address[16];
-    uint16  portnumber;
-    uint16  reserved1;
-    uint32  reserved2;
-    uint64  hashcode;
-};
-
 struct Membership {
     uint64  magic_number;
     key_t   ipckey;
@@ -148,18 +75,48 @@ struct Membership {
     uint16  join_addr2_port;
     uint16  reserved2;
     uint32  reserved3;
-    uint64  member_cnt;
-    struct MemberEntry members[1]; // members[0] is ourselves
+    struct st_entry ent_tab;
 };
 
 class MemberList {
 public:
-    MemberList(void* addr);
+    //typedef entry_iterator iterator;
+public:
+    MemberList();
     ~MemberList();
 
+    static size_t get_required_size(size_t ring_size);
+
+    // Initialize the memory, the data in memory will be lost
+    bool create(void* addr, key_t ipckey, size_t ring_size);
+    // Attach to the memory
     bool attach(void* addr);
     void detach();
 
+    entry_iterator begin();
+    entry_iterator end();
+
+    void add_node(int af, uint8 * addr, unsigned short port);
+    void del_node(int af, uint8 * addr, unsigned short port);
+    void update_node_heartbeat(int af, uint8 * addr, 
+                               unsigned short port,
+                               uint64 hb, 
+                               time_t now = time(NULL));
+
+    size_t size() const {
+        if (m_ptab != nullptr) {
+            return m_ptab->size();
+        }
+        return 0;
+    }
+
+    const struct MemberEntry& operator[](int i) const {
+        if (m_ptab == nullptr) {
+            throw std::runtime_error("no table");
+        }
+        return m_ptab->operator[](i);
+    }
+ 
     uint64 get_magic_number() const;
 
     bool set_ipckey(key_t);
@@ -186,9 +143,14 @@ public:
     pthread_mutex_t* get_mutex() const;
 
 protected:
+    bool init_entry_table(bool create=false);
     bool valid_child_status(uint8 st) const;
+    bool valid_node_addr(int af, int type, uint8 * addr, unsigned short port);
 private:
     struct Membership * m_paddr;
+
+    // entry table stores node
+    entry_table       * m_ptab;
 };
 
 /*

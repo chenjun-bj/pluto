@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    MemberList mgrinfo(nullptr);
+    MemberList mgrinfo;
     if (!mgrinfo.attach(addr)) {
         getlog()->sendlog(LogLevel::FATAL, "Load info failed\n");
         return 0;

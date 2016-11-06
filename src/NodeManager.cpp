@@ -52,7 +52,7 @@ NodeManager::NodeManager() :
     m_b_running(false),
     m_addr(nullptr),
     m_shmid(-1),
-    m_shm(nullptr)
+    m_shm()
 {
 }
 
@@ -63,10 +63,14 @@ NodeManager::~NodeManager()
 int NodeManager::initialize()
 {
     key_t ipckey = GetConfigPortal()->get_ipckey();
-    long ring_size = GetConfigPortal()->get_ringsize();
-    // The struct is 4 byte alignment, there's one additional MemberEntry
-    size_t size = sizeof(struct Membership) + 
-                  sizeof(struct MemberEntry) * ring_size; 
+    int ring_size = GetConfigPortal()->get_ringsize();
+    if (ring_size < KV_RING_MIN_SIZE || ring_size > KV_RING_MAX_SIZE) {
+        syslog(LOG_ERR, "Invalid ring size: %d,  valid range [%d, %d]\n", 
+                        ring_size, KV_RING_MIN_SIZE, KV_RING_MAX_SIZE);
+        return -1;
+    }
+
+    size_t size = MemberList::get_required_size(ring_size);
 
 #define SHM_MODE  0600  /* User read/write */
     m_shmid = shmget(ipckey, size, IPC_CREAT|IPC_EXCL|SHM_MODE);
@@ -88,14 +92,11 @@ int NodeManager::initialize()
     long *magic = (long*)m_addr;
     *magic = PL_SHM_MAGIC;
 
-    if (!m_shm.attach(m_addr)) {
+    if (!m_shm.create(m_addr, ipckey, ring_size)) {
         syslog(LOG_ERR, "Member list attach failed\n");
         cleanup();
         return -1;
     }
-
-    m_shm.set_ipckey(ipckey);
-    m_shm.set_ring_size(ring_size);
 
     /* Initialize lock */
     if (init_lock()!=0) {

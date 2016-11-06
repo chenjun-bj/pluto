@@ -119,7 +119,7 @@ vector<pair<string, unsigned short> > ConfigPortal::get_joinaddress() const
 
     try {
         pt::ptree join = m_ptree.get_child(CFG_JSON_PATH_JOINADDR);
-        for (auto addr : join) {
+        for (auto&& addr : join) {
             string ip = addr.second.get<string>(CFG_JSON_PATH_ADDR_IP);
             unsigned short port = addr.second.get<unsigned short>(CFG_JSON_PATH_ADDR_PORT);
 

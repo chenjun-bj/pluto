@@ -19,7 +19,7 @@
 
 #include <arpa/inet.h>
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "plexcept.h"
 
@@ -267,7 +267,7 @@ public:
         return m_type;
     }
 
-    void dump(int (*output)(const char*,...)=printf) const {
+    void dump(int (*output)(const char*,...)=std::printf) const {
         if (m_af == AF_INET) {
             output("IPv4: ");
             output("%0d.%0d.%0d.%0d\n", m_addr[0],

@@ -28,6 +28,7 @@
 
 #include <array>
 #include <stdexcept>
+#include <random>
 
 #include <arpa/inet.h>
 
@@ -92,6 +93,10 @@ int GossipProtocol::handle_messages(Message* msg)
 
 int GossipProtocol::handle_timer(int id)
 {
+    if (m_ingroup) {
+        detect_node_error();
+        send_heartbeat();
+    }
     return 0;
 }
 
@@ -125,6 +130,7 @@ int GossipProtocol::node_up()
 
 int GossipProtocol::node_down()
 {
+    m_ingroup = false;
     send_peerleave();
     return 0;
 }
@@ -197,6 +203,8 @@ void GossipProtocol::send_joinrequest()
         pmsg = new JoinRequestMessage(af, self_port, rawaddr.data());
     }
 
+    pmsg->build_msg();
+
     ip::udp::endpoint dest_ep = ip2udpend(dest.first, dest.second);
     pmsg->set_destination(dest_ep.address(), dest_ep.port());
 
@@ -210,6 +218,8 @@ void GossipProtocol::send_joinresponse()
 
 void GossipProtocol::send_heartbeat()
 {
+    Message * pmsg = construct_heartbeat_msg();
+    
 }
 
 void GossipProtocol::send_peerleave()
@@ -218,6 +228,70 @@ void GossipProtocol::send_peerleave()
 
 Message * GossipProtocol::construct_heartbeat_msg()
 {
-    return nullptr;
+    HeartbeatMessage * pmsg = new HeartbeatMessage();
+
+    for (auto&& node : *m_pmember) {
+        Address addr(node.af, node.type, node.address, node.portnumber);
+        HeartMsgStruct hmsg(node.heartbeat, addr);
+
+        pmsg->add_member(hmsg);
+    }
+
+    pmsg->build_msg();
+
+    return pmsg;
+}
+
+std::vector<ip::udp::endpoint> GossipProtocol::get_B_neibors()
+{
+    std::vector<ip::udp::endpoint> neibors;
+
+    int peer_cnt = m_pmember->size();
+    if (peer_cnt > 0) {
+        random_device rd;
+        mt19937 gen(rd());
+        uniform_int_distribution<> dis(0, m_pmember->size());
+
+        int b = peer_cnt < m_pconfig->get_gossipb() ? 
+                      peer_cnt : m_pconfig->get_gossipb();
+
+        for (int i=0; i<b; i++) {
+            const struct MemberEntry& node = m_pmember->operator[](i);
+            neibors.push_back(get_node_endpoint(node));
+        }
+    }
+    else {
+        // find join
+    }
+    return neibors;
+}
+
+ip::udp::endpoint GossipProtocol::get_node_endpoint(
+                                const struct MemberEntry& node) const
+{
+    ip::udp::endpoint end;
+    if (node.af == AF_INET) {
+        ip::address_v4::bytes_type rawip;
+
+        for (int i=0; i<rawip.max_size(); i++) {
+            rawip[i] = node.address[i];
+        }
+        
+        ip::address_v4 addr(rawip);
+        end.address(addr);
+        end.port(node.portnumber);
+    }
+    else {
+        ip::address_v6::bytes_type rawip;
+        
+        for (int i=0; i<rawip.max_size(); i++) {
+            rawip[i] = node.address[i];
+        }
+
+        ip::address_v6 addr(rawip);
+        end.address(addr);
+        end.port(node.portnumber);
+    }
+    return end;
 }
 

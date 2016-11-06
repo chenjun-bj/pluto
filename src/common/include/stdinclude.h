@@ -39,6 +39,9 @@
 
 #define KV_RING_DEF_SIZE 512   // The ring size, that the maximum number of node 
                                // supported by store
+#define KV_RING_MIN_SIZE 1       // Minimum size of the ring
+#define KV_RING_MAX_SIZE 32768   // Maximum ring size that can be supported.
+
 /* Membership protocol parameters */
 #define MEM_PROT_DEF_TFAIL     5
 #define MEM_PROT_DEF_TREMOVE   20

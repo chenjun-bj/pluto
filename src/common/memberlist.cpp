@@ -12,7 +12,14 @@
  *******************************************************************************
  */
 
+#include <cstddef>
+#include <stdexcept>
+
 #include "memberlist.h"
+#include "pladdress.h"
+
+#include "entrytable_impl_hash.h"
+#include "entrytable_impl_sortarray.h"
 
 /*
  *******************************************************************************
@@ -25,13 +32,41 @@
  *  Class declaraction                                                         *
  *******************************************************************************
  */
-MemberList::MemberList(void* addr) : 
-   m_paddr(reinterpret_cast<Membership*>(addr))
+
+size_t MemberList::get_required_size(size_t ring_size)
+{
+    size_t size = sizeof(struct Membership) -  
+                  sizeof(int32)  + // Membership contains one int32 entry
+                  entry_impl_sortarray::get_required_size(ring_size);
+
+    return size;
+}
+
+MemberList::MemberList() : 
+   m_paddr(nullptr),
+   m_ptab(nullptr)
 {
 }
 
 MemberList::~MemberList()
 {
+    if (m_ptab) {
+        delete m_ptab;
+    }
+}
+
+bool MemberList::create(void* addr, key_t ipckey, size_t ring_size)
+{
+    if (addr) {
+        m_paddr = reinterpret_cast<struct Membership*>(addr);
+        if (m_paddr->magic_number != PL_SHM_MAGIC) {
+            return false;
+        }
+        m_paddr->ring_size = ring_size;
+        m_paddr->ipckey    = ipckey;
+        return init_entry_table(true);
+    }
+    return false;
 }
 
 bool MemberList::attach(void* addr)
@@ -41,15 +76,117 @@ bool MemberList::attach(void* addr)
         if (m_paddr->magic_number != PL_SHM_MAGIC) {
             return false;
         }
-        return true;
+        return init_entry_table();
     }
     return false;
 }
 
-
 void MemberList::detach()
 {
     m_paddr = nullptr;
+    if (m_ptab) {
+        delete m_ptab;
+        m_ptab = nullptr; 
+    }
+}
+
+bool MemberList::init_entry_table(bool create)
+{
+    if (m_paddr == nullptr) {
+        return false;
+    }
+
+    void * entry_ptr = (void*)m_paddr + offsetof(Membership, ent_tab);
+    m_ptab = new entry_impl_sortarray(entry_ptr, m_paddr->ring_size, create);
+
+    return true;
+}
+
+entry_iterator MemberList::begin()
+{
+    return entry_iterator(*m_ptab);
+}
+
+entry_iterator MemberList::end()
+{
+    return entry_iterator(*m_ptab, true);
+}
+
+void MemberList::add_node(int af, uint8 * addr, unsigned short port)
+{
+    if (!valid_node_addr(af, SOCK_STREAM, addr, port)) {
+        throw std::invalid_argument("Invalid node address");
+    }
+
+    if (m_ptab == nullptr) {
+        throw std::logic_error("table not initialized");
+    }
+
+    struct MemberEntry node;
+
+    memset(&node, 0, sizeof(node));
+    node.af = af;
+    if (af == AF_INET) {
+        memcpy(node.address, addr, PL_IPv4_ADDR_LEN);
+    }
+    else {
+        memcpy(node.address, addr, PL_IPv6_ADDR_LEN);
+    }
+    node.portnumber = port;
+
+    m_ptab->insert(node);
+}
+
+void MemberList::del_node(int af, uint8 * addr, unsigned short port)
+{
+    if (!valid_node_addr(af, SOCK_STREAM, addr, port)) {
+        throw std::invalid_argument("Invalid node address");
+    }
+
+    if (m_ptab == nullptr) {
+        throw std::logic_error("table not initialized");
+    }
+
+    struct MemberEntry node;
+
+    memset(&node, 0, sizeof(node));
+    node.af = af;
+    if (af == AF_INET) {
+        memcpy(node.address, addr, PL_IPv4_ADDR_LEN);
+    }
+    else {
+        memcpy(node.address, addr, PL_IPv6_ADDR_LEN);
+    }
+    node.portnumber = port;
+
+    m_ptab->erase(node);
+}
+
+void MemberList::update_node_heartbeat(int af, uint8 * addr, unsigned short port,
+                                       unsigned long long hb,
+                                       time_t now)
+{
+    if (!valid_node_addr(af, SOCK_STREAM, addr, port)) {
+        throw std::invalid_argument("Invalid node address");
+    }
+
+    if (m_ptab == nullptr) {
+        throw std::logic_error("table not initialized");
+    }
+
+    struct MemberEntry node;
+
+    memset(&node, 0, sizeof(node));
+    node.af = af;
+    if (af == AF_INET) {
+        memcpy(node.address, addr, PL_IPv4_ADDR_LEN);
+    }
+    else {
+        memcpy(node.address, addr, PL_IPv6_ADDR_LEN);
+    }
+    node.portnumber = port;
+
+    m_ptab->update(node, hb, now);
 }
 
 uint64 MemberList::get_magic_number() const
@@ -185,7 +322,7 @@ uint64 MemberList::get_ring_size() const
     if (m_paddr) {
         return m_paddr->ring_size;
     }
-    return -1;
+    return 0;
 }
 
 bool  MemberList::valid_child_status(uint8 status) const
@@ -200,3 +337,10 @@ bool  MemberList::valid_child_status(uint8 status) const
     return false;
 }
 
+bool MemberList::valid_node_addr(int af, int type, uint8 * addr, unsigned short port)
+{
+    if ((af != AF_INET) && (af != AF_INET6)) {
+        return false;
+    }
+    return true;
+}

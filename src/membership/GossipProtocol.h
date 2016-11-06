@@ -15,11 +15,15 @@
  *  Headers                                                                    *
  *******************************************************************************
  */
+#include <vector>
+
 #include "stdinclude.h"
 #include "memberlist.h"
 #include "messages.h"
 
 #include "MembershipProtocol.h"
+
+#include <boost/asio.hpp>
 
 /*
  *******************************************************************************
@@ -64,6 +68,10 @@ protected:
     void send_joinresponse();
     void send_heartbeat();
     void send_peerleave();
+
+    std::vector<boost::asio::ip::udp::endpoint> get_B_neibors();
+    boost::asio::ip::udp::endpoint get_node_endpoint(
+                                const struct MemberEntry&) const;
 
     Message * construct_heartbeat_msg();
 private:
