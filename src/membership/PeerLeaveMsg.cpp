@@ -148,7 +148,7 @@ void PeerLeaveMessage::set_ip_addr(int af, unsigned char* ip)
                        af == AF_INET ? PL_IPv4_ADDR_LEN : PL_IPv6_ADDR_LEN);
 }
 
-void PeerLeaveMessage::set_portnumber(unsigned short port)
+void PeerLeaveMessage::set_port(unsigned short port)
 {
     m_addr.set_port(port);
 }
@@ -158,7 +158,7 @@ const unsigned char* PeerLeaveMessage::get_ip_addr(int * af) const
     return m_addr.get_ip_addr(af);
 }
 
-unsigned short PeerLeaveMessage::get_portnumber() const
+unsigned short PeerLeaveMessage::get_port() const
 {
     return m_addr.get_port();
 }

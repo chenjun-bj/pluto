@@ -73,6 +73,12 @@ void entry_impl_sortarray::initialize(void* addr, std::size_t max_size, bool cre
     }
 }
 
+void entry_impl_sortarray::clear()
+{
+    m_tab->member_cnt = 0;
+    memset(m_mement, 0, sizeof(struct MemberEntry) * m_sz_slot);
+}
+
 void entry_impl_sortarray::insert(const struct MemberEntry& e)
 {
     if (m_tab->member_cnt >= m_sz_slot) {
@@ -122,7 +128,7 @@ void entry_impl_sortarray::erase(const struct MemberEntry& e)
 
 }
 
-void entry_impl_sortarray::update(const struct MemberEntry& e, uint64 hb, uint64 now)
+void entry_impl_sortarray::update(const struct MemberEntry& e)
 {
     MemberEntry tmp = e;
     std::size_t hashkey = entry_hash(tmp);
@@ -135,8 +141,103 @@ void entry_impl_sortarray::update(const struct MemberEntry& e, uint64 hb, uint64
         } 
     }
     if (i != m_tab->member_cnt) {
-        m_mement[i].heartbeat = hb;
-        m_mement[i].tm_lasthb = now;
+        m_mement[i].heartbeat = tmp.heartbeat;
+        m_mement[i].tm_lasthb = tmp.tm_lasthb;
+    }
+}
+
+int entry_impl_sortarray::get_node_heartbeat(struct MemberEntry & e)
+{
+    std::size_t hashkey = entry_hash(e);
+    e.hashcode = hashkey;
+
+    uint32 i;
+    for (i=0; i<m_tab->member_cnt; i++) {
+        if (entry_equal(e, m_mement[i])) {
+            break;
+        } 
+    }
+    if (i != m_tab->member_cnt) {
+        e.heartbeat = m_mement[i].heartbeat;
+        return 0;
+    }
+
+    return -1;
+}
+ 
+void entry_impl_sortarray::bulk_add(const std::vector< struct MemberEntry > & nodes)
+{
+    if (nodes.size() == 0) return;
+
+    std::vector< struct MemberEntry > v = nodes;
+    std::sort(v.begin(), v.end(), entry_less);
+
+    std::vector< struct MemberEntry > r;
+
+    uint32 i, j;
+    for (i=j=0; (i<v.size()) && (j<m_tab->member_cnt); ) {
+        if (entry_less(m_mement[j], v[i])) {
+            r.push_back(m_mement[j]);
+            j++;
+        }
+        else if (entry_less(v[i], m_mement[j])) {
+            r.push_back(v[i]);
+            i++;
+        }
+        else {
+            // if equal, use new added value
+            r.push_back(v[i]);
+            i++;
+            j++;
+        }
+    }
+
+    while (i<v.size()) {
+       r.push_back(v[i]);
+       i++;
+    }
+
+    while (j<m_tab->member_cnt) {
+       r.push_back(m_mement[j]);
+       j++;
+    }
+
+    memcpy(m_mement, r.data(), r.size() * sizeof(struct MemberEntry));
+    m_tab->member_cnt = r.size();
+}
+
+void entry_impl_sortarray::bulk_update(const std::vector< struct MemberEntry > & nodes,
+                                       time_t now )
+{
+    if (nodes.size() == 0) return;
+
+    std::vector< struct MemberEntry > v = nodes;
+    std::sort(v.begin(), v.end(), entry_less);
+
+    std::vector< struct MemberEntry > r;
+
+    uint32 i, j;
+    for (i=j=0; (i<v.size()) && (j<m_tab->member_cnt); ) {
+        if (entry_less(m_mement[j], v[i])) {
+            j++;
+        }
+        else if (entry_less(v[i], m_mement[j])) {
+            // not exist in list, insert
+            v[i].tm_lasthb = now;
+            r.push_back(v[i]);
+            i++;
+        }
+        else {
+            // equal
+            v[i].tm_lasthb = now;
+            m_mement[j] = v[i];
+            i++;
+            j++;
+        }
+    }
+
+    if (r.size()>0) {
+        bulk_add(r);
     }
 }
 

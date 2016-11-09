@@ -63,13 +63,13 @@ public:
 
     /* IPv4: 4 bytes, IPv6: 16 bytes */
     void set_ip_addr(int af, unsigned char* ip);
-    void set_portnumber(unsigned short port);
+    void set_port(unsigned short port);
     void set_leave_reason(LeaveReason reason) {
         m_reason = reason;
     }
 
     const unsigned char* get_ip_addr(int * af) const;
-    unsigned short get_portnumber() const;
+    unsigned short get_port() const;
     LeaveReason get_leave_reason() const {
         return m_reason;
     }

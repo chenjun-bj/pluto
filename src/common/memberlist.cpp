@@ -90,6 +90,13 @@ void MemberList::detach()
     }
 }
 
+void MemberList::clear()
+{
+    if (m_ptab) {
+        m_ptab->clear();
+    }
+}
+
 bool MemberList::init_entry_table(bool create)
 {
     if (m_paddr == nullptr) {
@@ -112,7 +119,8 @@ entry_iterator MemberList::end()
     return entry_iterator(*m_ptab, true);
 }
 
-void MemberList::add_node(int af, uint8 * addr, unsigned short port)
+void MemberList::add_node(int af, const uint8 * addr, unsigned short port,
+                          int64 hb, time_t now)
 {
     if (!valid_node_addr(af, SOCK_STREAM, addr, port)) {
         throw std::invalid_argument("Invalid node address");
@@ -133,11 +141,13 @@ void MemberList::add_node(int af, uint8 * addr, unsigned short port)
         memcpy(node.address, addr, PL_IPv6_ADDR_LEN);
     }
     node.portnumber = port;
+    node.heartbeat = hb;
+    node.tm_lasthb = now;
 
     m_ptab->insert(node);
 }
 
-void MemberList::del_node(int af, uint8 * addr, unsigned short port)
+void MemberList::del_node(int af, const uint8 * addr, unsigned short port)
 {
     if (!valid_node_addr(af, SOCK_STREAM, addr, port)) {
         throw std::invalid_argument("Invalid node address");
@@ -162,8 +172,8 @@ void MemberList::del_node(int af, uint8 * addr, unsigned short port)
     m_ptab->erase(node);
 }
 
-void MemberList::update_node_heartbeat(int af, uint8 * addr, unsigned short port,
-                                       unsigned long long hb,
+void MemberList::update_node_heartbeat(int af, const uint8 * addr, unsigned short port,
+                                       int64 hb,
                                        time_t now)
 {
     if (!valid_node_addr(af, SOCK_STREAM, addr, port)) {
@@ -185,8 +195,49 @@ void MemberList::update_node_heartbeat(int af, uint8 * addr, unsigned short port
         memcpy(node.address, addr, PL_IPv6_ADDR_LEN);
     }
     node.portnumber = port;
+    node.heartbeat = hb;
+    node.tm_lasthb = now;
 
-    m_ptab->update(node, hb, now);
+    m_ptab->update(node);
+}
+
+int MemberList::get_node_heartbeat(int af, const uint8 * addr, unsigned short port,
+                                   int64* hb)
+{
+    if (!valid_node_addr(af, SOCK_STREAM, addr, port)) {
+        return -1;
+    }
+
+    if (m_ptab == nullptr) {
+        return -1;
+    }
+
+    struct MemberEntry node;
+
+    memset(&node, 0, sizeof(node));
+    node.af = af;
+    if (af == AF_INET) {
+        memcpy(node.address, addr, PL_IPv4_ADDR_LEN);
+    }
+    else {
+        memcpy(node.address, addr, PL_IPv6_ADDR_LEN);
+    }
+    node.portnumber = port;
+
+    int rc = m_ptab->get_node_heartbeat(node);
+    *hb = node.heartbeat;
+
+    return rc;
+}
+
+void MemberList::bulk_add(const std::vector< struct MemberEntry > & nodes)
+{
+    m_ptab->bulk_add(nodes);
+}
+
+void MemberList::bulk_update(const std::vector< struct MemberEntry > &nodes, time_t now)
+{
+    m_ptab->bulk_update(nodes, now);
 }
 
 uint64 MemberList::get_magic_number() const
@@ -317,6 +368,7 @@ bool  MemberList::set_ring_size(uint64 size)
     }
     return false;
 }
+
 uint64 MemberList::get_ring_size() const
 {
     if (m_paddr) {
@@ -325,22 +377,3 @@ uint64 MemberList::get_ring_size() const
     return 0;
 }
 
-bool  MemberList::valid_child_status(uint8 status) const
-{
-    if ((status == PL_CHILD_ST_NONE) || 
-        (status == PL_CHILD_ST_INIT) ||
-        (status == PL_CHILD_ST_RUN)  ||
-        (status == PL_CHILD_ST_STOP) ||
-        (status == PL_CHILD_ST_FAIL)) {
-        return true;
-    }
-    return false;
-}
-
-bool MemberList::valid_node_addr(int af, int type, uint8 * addr, unsigned short port)
-{
-    if ((af != AF_INET) && (af != AF_INET6)) {
-        return false;
-    }
-    return true;
-}

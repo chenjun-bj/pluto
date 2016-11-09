@@ -100,7 +100,7 @@ void add_node(int cnt)
     std::iota(port, port+NODE_CNT, 10001);
 
     for (int i=0; i<NODE_CNT; i++) {
-        memlst.add_node(af, (unsigned char*)(addr+i), port[i]);
+        memlst.add_node(af, (unsigned char*)(addr+i), port[i], -1);
     }
 
     traverse();

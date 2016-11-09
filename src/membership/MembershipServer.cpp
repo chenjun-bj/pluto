@@ -64,7 +64,9 @@ MembershipServer::MembershipServer(ConfigPortal * pcfg,
    m_udpsock(m_io),
    m_t(m_io),
    m_snd_que(),
-   m_snd_txid(0)
+   m_snd_txid(0),
+   m_multicast_que(),
+   m_multicast_txid(0)
 {
 
     if (m_pcfg->get_protocol() == "GOSSIP") {
@@ -176,6 +178,44 @@ void MembershipServer::do_send(Message * pmsg)
                   }
                   m_snd_que.erase(txid);
            });
+}
+
+void MembershipServer::do_multicast(const vector<ip::udp::endpoint > &ends, Message * pmsg)
+{
+    if (pmsg == nullptr) return;
+
+    if (ends.size()==0) {
+        delete pmsg;
+        return;
+    }
+
+    unsigned long long txid = m_multicast_txid++;
+    if (m_multicast_txid == ULLONG_MAX) {
+        m_multicast_txid = 0;
+        // TODO: what about if message of txid 0 has not sent complete?
+    }
+
+    m_multicast_que[txid] = make_pair(ends.size(), pmsg);
+    auto multi_cmp = [this, txid](boost::system::error_code /*ec*/, std::size_t /*bytes_sent*/) {
+                        multicast_info ctl = m_multicast_que[txid];
+                        int cnt         = ctl.first;
+                        Message * todel = ctl.second;
+                        if (--cnt == 0) {
+                            if (todel) {
+                                delete todel;
+                            }
+                            m_multicast_que.erase(txid);
+                        }
+                        else {
+                            m_multicast_que[txid] = make_pair(cnt, todel);
+                        }
+                    };
+    for (auto&& end : ends) {
+        m_udpsock.async_send_to(
+                  boost::asio::buffer(pmsg->get_raw(), pmsg->get_size()),
+                  end,
+                  multi_cmp);
+    }
 }
 
 void MembershipServer::handle_period_timer()

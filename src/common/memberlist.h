@@ -19,6 +19,11 @@
 #include <sys/ipc.h>
 #include <pthread.h>
 
+#include <ctime>
+
+#include <vector>
+#include <tuple>
+
 #include "pltypes.h"
 
 #include "entrytable.h"
@@ -92,16 +97,26 @@ public:
     // Attach to the memory
     bool attach(void* addr);
     void detach();
+    // clear node table
+    void clear();
 
     entry_iterator begin();
     entry_iterator end();
 
-    void add_node(int af, uint8 * addr, unsigned short port);
-    void del_node(int af, uint8 * addr, unsigned short port);
-    void update_node_heartbeat(int af, uint8 * addr, 
+    void add_node(int af, const uint8 * addr, unsigned short port,
+                  int64 hb, time_t now = std::time(NULL));
+    void del_node(int af, const uint8 * addr, unsigned short port);
+    void update_node_heartbeat(int af, const uint8 * addr, 
                                unsigned short port,
-                               uint64 hb, 
-                               time_t now = time(NULL));
+                               int64 hb, 
+                               time_t now = std::time(NULL));
+
+    int get_node_heartbeat(int af, const uint8 * addr, unsigned short port,
+                           int64* hb);
+
+    void bulk_add(const std::vector< struct MemberEntry > &);
+    // Only updates heartbeat message, 
+    void bulk_update(const std::vector< struct MemberEntry > &, time_t now = time(NULL));
 
     size_t size() const {
         if (m_ptab != nullptr) {
@@ -145,7 +160,8 @@ public:
 protected:
     bool init_entry_table(bool create=false);
     bool valid_child_status(uint8 st) const;
-    bool valid_node_addr(int af, int type, uint8 * addr, unsigned short port);
+    bool valid_node_addr(int af, int type, const uint8 * addr, 
+                         unsigned short port);
 private:
     struct Membership * m_paddr;
 
@@ -159,6 +175,26 @@ private:
  *******************************************************************************
  */
 
+inline bool  MemberList::valid_child_status(uint8 status) const
+{
+    if ((status == PL_CHILD_ST_NONE) || 
+        (status == PL_CHILD_ST_INIT) ||
+        (status == PL_CHILD_ST_RUN)  ||
+        (status == PL_CHILD_ST_STOP) ||
+        (status == PL_CHILD_ST_FAIL)) {
+        return true;
+    }
+    return false;
+}
+
+inline bool MemberList::valid_node_addr(int af, int type, 
+                                        const uint8 * addr, unsigned short port)
+{
+    if ((af != AF_INET) && (af != AF_INET6)) {
+        return false;
+    }
+    return true;
+}
 
 #endif // _MEMBER_LIST_H
 

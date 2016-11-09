@@ -54,7 +54,12 @@ public:
     void initialize(void* addr, std::size_t max_size, bool create=false);
     void insert(const struct MemberEntry & e);
     void erase(const struct MemberEntry & e);
-    void update(const struct MemberEntry & e, uint64 hb, uint64 now = std::time(NULL));
+    void update(const struct MemberEntry & e);
+    int  get_node_heartbeat(struct MemberEntry & e);
+    void bulk_add(const std::vector< struct MemberEntry > &);
+    void bulk_update(const std::vector< struct MemberEntry > &, 
+                     time_t now = std::time(NULL));
+    void clear();
 
     const struct MemberEntry& operator[](int i) const;
 

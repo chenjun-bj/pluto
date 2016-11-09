@@ -18,12 +18,15 @@
 #include <ctime>
 #include <cstring>
 
+#include <vector>
+
 #include <boost/functional/hash.hpp>
 
 #include <sys/types.h>
 #include <sys/socket.h>
 
 #include "pltypes.h"
+#include "pladdress.h"
 /*
  *******************************************************************************
  *  Macros                                                                     *
@@ -53,12 +56,12 @@ struct st_entry {
 
 struct MemberEntry {
     uint64  id;        // assign by entry_table
-    uint64  hashcode;  // computed by entry_table
-    uint64  heartbeat;
+    int64   hashcode;  // computed by entry_table
+    int64   heartbeat; // -1 indicates start over
     uint64  tm_lasthb; // time in seconds
-    uint32  af;
-    uint32  type;
-    uint8   address[16];
+    int32   af;
+    int32   type;
+    uint8   address[PL_IPv6_ADDR_LEN]; // IPv6: 16 bytes, IPv4: 4 bytes
     uint16  portnumber;
     uint16  reserved;
     int32   next;
@@ -73,8 +76,13 @@ public:
     virtual void initialize(void* addr, std::size_t max_size, bool create = false) = 0;
     virtual void insert(const struct MemberEntry & e) = 0;
     virtual void erase(const struct MemberEntry & e) = 0;
-    virtual void update(const struct MemberEntry & e, uint64 hb, 
-                        uint64 now = std::time(NULL)) = 0;
+    virtual void update(const struct MemberEntry & e) = 0;
+    virtual int  get_node_heartbeat(struct MemberEntry & e) = 0;
+    virtual void bulk_add(const std::vector< struct MemberEntry > &) = 0;
+    // Add not found data into memeber list
+    virtual void bulk_update(const std::vector< struct MemberEntry > &, 
+                             time_t now = std::time(NULL)) = 0;
+    virtual void clear() = 0;
 
     virtual const struct MemberEntry& operator[](int i) const = 0;
     virtual std::size_t size() const = 0;

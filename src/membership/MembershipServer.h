@@ -53,6 +53,9 @@ public:
  
    void do_send(Message * pmsg);
 
+   void do_multicast(const std::vector<boost::asio::ip::udp::endpoint >& ends, 
+                     Message * pmsg);
+
 private:
    void handle_period_timer(); 
 
@@ -64,6 +67,8 @@ private:
    void append_buffer(const boost::asio::ip::udp::endpoint & sender, 
                       unsigned char* buf, size_t sz);
    void empty_buffer(const boost::asio::ip::udp::endpoint & sender);
+
+   typedef std::pair<int, Message* > multicast_info;
 private:
    bool           m_done;
 
@@ -95,6 +100,9 @@ private:
 
    std::map<unsigned long long, Message* > m_snd_que;
    unsigned long long          m_snd_txid;
+
+   std::map<unsigned long long, multicast_info > m_multicast_que;
+   unsigned long long          m_multicast_txid;
 };
 
 /*

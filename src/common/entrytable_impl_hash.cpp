@@ -70,19 +70,24 @@ void entry_impl_hash::initialize(void* addr, std::size_t max_size, bool create)
     m_mement = (struct MemberEntry*)(m_hash + m_sz_hash);
 
     if (create) {
-        uint32 i;
-        for (i=0; i<m_sz_slot; i++) {
-            m_mement[i].next = i+1;
-        }
-        m_mement[i-1].next = NIL_PTR;
-
-        for (i=0; i<m_sz_hash; i++) {
-            m_hash[i] = NIL_PTR;
-        }
-
-        m_tab->member_cnt     = 0;
-        m_tab->ent_free_start = 0;
+        clear();
     }
+}
+
+void entry_impl_hash::clear()
+{
+    uint32 i;
+    for (i=0; i<m_sz_slot; i++) {
+        m_mement[i].next = i+1;
+    }
+    m_mement[i-1].next = NIL_PTR;
+
+    for (i=0; i<m_sz_hash; i++) {
+        m_hash[i] = NIL_PTR;
+    }
+
+    m_tab->member_cnt     = 0;
+    m_tab->ent_free_start = 0;
 }
 
 void entry_impl_hash::insert(const struct MemberEntry& e)
@@ -155,7 +160,7 @@ void entry_impl_hash::erase(const struct MemberEntry& e)
     m_tab->member_cnt--;
 }
 
-void entry_impl_hash::update(const struct MemberEntry& e, uint64 hb, uint64 now)
+void entry_impl_hash::update(const struct MemberEntry& e)
 {
     int32 hk = compute_index(e);
     int32 idx;
@@ -170,8 +175,49 @@ void entry_impl_hash::update(const struct MemberEntry& e, uint64 hb, uint64 now)
         return;
     }
 
-    m_mement[idx].heartbeat = hb;
-    m_mement[idx].tm_lasthb = now;
+    m_mement[idx].heartbeat = e.heartbeat;
+    m_mement[idx].tm_lasthb = e.tm_lasthb;
+}
+
+int entry_impl_hash::get_node_heartbeat(struct MemberEntry & e)
+{
+    int32 hk = compute_index(e);
+    int32 idx;
+
+    for (idx = m_hash[hk]; idx != NIL_PTR; idx = m_mement[idx].next) {
+        if (entry_equal(m_mement[idx], e)) {
+            break;
+        } 
+    }
+
+    if (idx == NIL_PTR) {
+        return -1;
+    }
+
+    e.heartbeat = m_mement[idx].heartbeat;
+
+    return 0;
+}
+
+void entry_impl_hash::bulk_add(const std::vector< struct MemberEntry > & nodes)
+{
+    for (auto&& e : nodes) {
+        insert(e);
+    }
+}
+
+void entry_impl_hash::bulk_update(const std::vector< struct MemberEntry > & nodes, 
+                                  time_t now)
+{
+    for (auto&& e : nodes) {
+        struct MemberEntry tmp=e;
+        tmp.tm_lasthb = now;
+        if (get_node_heartbeat(tmp) == -1) {
+            insert(tmp);
+        } else {
+            update(tmp);
+        }
+    }
 }
 
 const struct MemberEntry& entry_impl_hash::operator[](int i) const

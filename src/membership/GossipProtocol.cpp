@@ -27,13 +27,18 @@
 #include <boost/asio.hpp>
 
 #include <array>
+#include <algorithm>
 #include <stdexcept>
 #include <random>
+
+#include <ctime>
 
 #include <arpa/inet.h>
 
 using namespace std;
 using namespace boost::asio;
+
+#define HEARTBEAT_INITIAL_VALUE  -1
 
 /*
  *******************************************************************************
@@ -49,7 +54,9 @@ using namespace boost::asio;
 
 GossipProtocol::GossipProtocol(MemberList *mlist, ConfigPortal * cfg,
                                MembershipServer* psvr) :
-   m_ingroup(false)
+   m_ingroup(false),
+   m_self_hb(HEARTBEAT_INITIAL_VALUE),
+   m_failed()
 {
     if ((mlist==nullptr) || (cfg==nullptr) || (psvr==nullptr)) {
         throw std::invalid_argument("nullptr");
@@ -57,6 +64,23 @@ GossipProtocol::GossipProtocol(MemberList *mlist, ConfigPortal * cfg,
     m_pmember = mlist;
     m_pconfig = cfg;
     m_pnet    = psvr;
+
+    string self_ip(m_pconfig->get_bindip());
+
+    m_self_port = m_pconfig->get_bindport();
+    m_self_addr = ip::address::from_string(self_ip);
+
+    memset(m_self_rawip, '\0', PL_IPv6_ADDR_LEN);
+    if (m_self_addr.is_v6()) {
+        ip::address_v6::bytes_type rawaddr = m_self_addr.to_v6().to_bytes();
+        m_self_af = AF_INET6;
+        memcpy(m_self_rawip, rawaddr.data(), PL_IPv6_ADDR_LEN);
+    } 
+    else {
+        ip::address_v4::bytes_type rawaddr = m_self_addr.to_v4().to_bytes();
+        m_self_af = AF_INET;
+        memcpy(m_self_rawip, rawaddr.data(), PL_IPv6_ADDR_LEN);
+    }
 }
 
 GossipProtocol::~GossipProtocol()
@@ -94,6 +118,14 @@ int GossipProtocol::handle_messages(Message* msg)
 int GossipProtocol::handle_timer(int id)
 {
     if (m_ingroup) {
+        int64 hb = m_self_hb++;
+
+        if (hb == LLONG_MAX) {
+            hb = HEARTBEAT_INITIAL_VALUE;
+        }
+
+        m_pmember->update_node_heartbeat(m_self_af, m_self_rawip, m_self_port,
+                                         hb);
         detect_node_error();
         send_heartbeat();
     }
@@ -107,8 +139,8 @@ int GossipProtocol::node_up()
         throw config_error("No join address");
     }
 
-    string self_ip(m_pconfig->get_bindip());
-    unsigned short self_port = m_pconfig->get_bindport();
+    string self_ip(m_self_addr.to_string());
+    unsigned short self_port = m_self_port;
 
     for (auto&& dest : joinaddr) {
         if ((dest.first == self_ip) && 
@@ -117,14 +149,17 @@ int GossipProtocol::node_up()
         }
     }
 
+    m_pmember->clear();
+
     if (!m_ingroup) {
         send_joinrequest();
     }
     else {
+        m_pmember->add_node(m_self_af, m_self_rawip, m_self_port,
+                            m_self_hb);
         send_heartbeat();
     }
 
-    // TODO: initilize membership list
     return 0;
 }
 
@@ -137,6 +172,53 @@ int GossipProtocol::node_down()
 
 int GossipProtocol::detect_node_error()
 {
+    unsigned long now = (unsigned long)time(NULL);
+    long  TFAIL   = m_pconfig->get_failtime();
+    long  TREMOVE = m_pconfig->get_rmtime();
+
+    std::vector< struct MemberEntry > detected;
+    for (auto&& node : *m_pmember) {
+        if (node.tm_lasthb + TFAIL < now) {
+            // detected failed node
+            detected.push_back(node);
+        }
+    }
+
+    std::sort(detected.begin(), detected.end(), entry_less);
+
+    std::vector<struct MemberEntry > newfailed;
+
+    unsigned int i,j;
+    for (i=j=0; i<m_failed.size() && j<detected.size(); ) {
+        if (entry_equal(m_failed[i], detected[j])) {
+            if (m_failed[i].tm_lasthb + TREMOVE < now) {
+                // TODO: optimize, the deleted node is in order, so there's 
+                //       chance for underlying implementation to optimize
+                m_pmember->del_node(m_failed[i].af, m_failed[i].address, 
+                                    m_failed[i].portnumber);
+            }
+            else {
+                newfailed.push_back( m_failed[i]);
+            }
+            i++;
+            j++;
+        }
+        else if (entry_less(detected[j], m_failed[i])) {
+            newfailed.push_back( detected[j]);
+            j++;
+        }
+        else {
+            // the previous failed node m_failed[i] is back
+            i++;
+        }
+    }
+
+    for (;j<detected.size(); j++) {
+        newfailed.push_back( detected[j]);
+    }
+
+    m_failed = std::move(newfailed);
+
     return 0;
 }
 
@@ -148,18 +230,108 @@ int GossipProtocol::disseminate_error()
 
 void GossipProtocol::handle_joinrequest(Message * msg)
 {
+    if (msg == nullptr) return;
+    pair<ip::address, unsigned short> source = msg->get_source();
+    if (!is_self_node(source.first, source.second)) {
+        int af;
+        unsigned char rawip[PL_IPv6_ADDR_LEN] = { '\0' };
+        if (source.first.is_v4()) {
+            af = AF_INET;
+            memcpy(rawip, source.first.to_v4().to_bytes().data(), PL_IPv6_ADDR_LEN);
+        }
+        else {
+            af = AF_INET6;
+            memcpy(rawip, source.first.to_v4().to_bytes().data(), PL_IPv4_ADDR_LEN);
+        }
+        m_pmember->add_node(af, rawip, source.second, HEARTBEAT_INITIAL_VALUE);
+        send_joinresponse(source.first, source.second);
+    }
 }
 
 void GossipProtocol::handle_joinresponse(Message * msg)
 {
+    if (msg == nullptr) return;
+
+    JoinResponseMessage* pmsg = dynamic_cast<JoinResponseMessage*>(msg);
+    if (pmsg->get_status() != MsgStatus::OK) {
+        // Error
+        return;
+    }
+
+    m_pmember->clear();
+
+    bool am_in_list = false;
+    vector< struct MemberEntry > nodes;
+    for (auto&& node : pmsg->get_members()) {
+        struct MemberEntry m;
+        construct_member_from_htmsg(m, node);
+        
+        if (is_self_node(m.af, m.address, m.portnumber)) {
+            am_in_list = true;
+            m.heartbeat = HEARTBEAT_INITIAL_VALUE;
+        }
+
+        nodes.push_back( m );
+    }
+
+    if (!am_in_list) {
+        struct MemberEntry m;
+
+        m.af        = m_self_af;
+        m.heartbeat = HEARTBEAT_INITIAL_VALUE;
+        m.tm_lasthb = time(NULL);
+        m.portnumber= m_self_port;
+        m.type      = SOCK_STREAM;
+        memcpy(m.address, m_self_rawip, PL_IPv6_ADDR_LEN);
+
+        nodes.push_back(m);
+    }
+
+    m_pmember->bulk_add(nodes);
+
+    m_ingroup = true;
 }
 
 void GossipProtocol::handle_heartbeat(Message * msg)
 {
+    if (msg == nullptr) return;
+    HeartbeatMessage * pmsg = dynamic_cast<HeartbeatMessage*>(msg);
+
+    time_t now = time(NULL);
+    vector< struct MemberEntry > ups;
+    vector< struct MemberEntry > adds;
+    for (auto&& node : pmsg->get_members()) {
+        struct MemberEntry m;
+        construct_member_from_htmsg(m, node);
+        if (is_self_node(m.af, m.address, m.portnumber)) {
+            // Do not update ourselves!!!
+            continue;
+        }
+        // TODO: optimize: underlying may provide a bulk get operation which
+        //       can leaverge sorted acceleration
+        int rc = m_pmember->get_node_heartbeat(m.af, m.address, m.portnumber, &(m.heartbeat));
+        if (rc != 0) {
+            adds.push_back(m);
+            continue;
+        } 
+        if ((m.heartbeat > node.get_heartbeat()) ||
+            (node.get_heartbeat() == HEARTBEAT_INITIAL_VALUE)) { 
+            ups.push_back(m);
+        }
+    }
+    m_pmember->bulk_update(ups, now);
+    m_pmember->bulk_add(adds);
 }
 
 void GossipProtocol::handle_peerleave(Message * msg)
 {
+    if (msg == nullptr) return;
+    PeerLeaveMessage * pmsg = dynamic_cast<PeerLeaveMessage*>(msg);
+
+    int af = 0;
+    const unsigned char* paddr = pmsg->get_ip_addr(&af);
+
+    m_pmember->del_node(af, paddr, pmsg->get_port());
 }
 
 void GossipProtocol::send_joinrequest()
@@ -174,12 +346,9 @@ void GossipProtocol::send_joinrequest()
         joinid = 0;
     }
 
-    string self_ip(m_pconfig->get_bindip());
-    unsigned short self_port = m_pconfig->get_bindport();
-
     ConfigPortal::IPAddr dest = joinaddr[joinid++];
-    if ((dest.first == self_ip) && 
-        (dest.second == self_port)) {
+    if ((dest.first == m_self_addr.to_string()) && 
+        (dest.second == m_self_port)) {
         if (joinaddr.size()>1) {
             send_joinrequest();
         }
@@ -189,19 +358,8 @@ void GossipProtocol::send_joinrequest()
     }
 
     Message * pmsg = nullptr;
-    int af = AF_INET;
 
-    ip::udp::endpoint self_ep = ip2udpend(self_ip, self_port);
-    if (self_ep.address().is_v6()) {
-        ip::address_v6::bytes_type rawaddr = self_ep.address().to_v6().to_bytes();
-        af = AF_INET6;
-        pmsg = new JoinRequestMessage(af, self_port, rawaddr.data());
-    } 
-    else {
-        ip::address_v4::bytes_type rawaddr = self_ep.address().to_v4().to_bytes();
-        af = AF_INET;
-        pmsg = new JoinRequestMessage(af, self_port, rawaddr.data());
-    }
+    pmsg = new JoinRequestMessage(m_self_af, m_self_port, m_self_rawip);
 
     pmsg->build_msg();
 
@@ -212,18 +370,43 @@ void GossipProtocol::send_joinrequest()
     // network should delete pmsg
 }
 
-void GossipProtocol::send_joinresponse()
+void GossipProtocol::send_joinresponse(const ip::address& ip, 
+                                       unsigned short port, 
+                                       const MsgStatus& status)
 {
+    JoinResponseMessage * pmsg = new JoinResponseMessage(status);
+
+    for (auto&& node : *m_pmember) {
+        Address addr(node.af, node.type, node.address, node.portnumber);
+        HeartMsgStruct hmsg(node.heartbeat, addr);
+
+        pmsg->add_member(hmsg);
+    }
+
+    pmsg->build_msg();
+    m_pnet->do_send(pmsg);
 }
 
 void GossipProtocol::send_heartbeat()
 {
     Message * pmsg = construct_heartbeat_msg();
-    
+    std::vector<ip::udp::endpoint> peers = get_B_neibors();
+    m_pnet->do_multicast(peers, pmsg);
 }
 
-void GossipProtocol::send_peerleave()
+void GossipProtocol::send_peerleave(const PeerLeaveMessage::LeaveReason& reason)
 {
+    string self_ip(m_pconfig->get_bindip());
+
+    Message * pmsg = nullptr;
+
+    pmsg = new PeerLeaveMessage(reason, m_self_af, m_self_port, m_self_rawip);
+
+    pmsg->build_msg();
+
+    std::vector<ip::udp::endpoint> peers = get_B_neibors();
+
+    m_pnet->do_multicast(peers, pmsg);
 }
 
 Message * GossipProtocol::construct_heartbeat_msg()
@@ -247,10 +430,11 @@ std::vector<ip::udp::endpoint> GossipProtocol::get_B_neibors()
     std::vector<ip::udp::endpoint> neibors;
 
     int peer_cnt = m_pmember->size();
-    if (peer_cnt > 0) {
+    if (peer_cnt > 1) {
+        // ourselves always exist
         random_device rd;
         mt19937 gen(rd());
-        uniform_int_distribution<> dis(0, m_pmember->size());
+        uniform_int_distribution<> dis(0, peer_cnt);
 
         int b = peer_cnt < m_pconfig->get_gossipb() ? 
                       peer_cnt : m_pconfig->get_gossipb();
@@ -261,8 +445,19 @@ std::vector<ip::udp::endpoint> GossipProtocol::get_B_neibors()
         }
     }
     else {
-        // find join
+        // If no neibors, send to join
+        vector<ConfigPortal::IPAddr > joinaddr = m_pconfig->get_joinaddress();
+        string self_ip(m_pconfig->get_bindip());
+        unsigned short self_port = m_pconfig->get_bindport();
+
+        for (auto&& dest : joinaddr) {
+            if ((dest.first != self_ip) || 
+                (dest.second != self_port)) {
+                neibors.push_back(ip2udpend(dest.first, dest.second));
+            }
+        }
     }
+
     return neibors;
 }
 
@@ -273,7 +468,7 @@ ip::udp::endpoint GossipProtocol::get_node_endpoint(
     if (node.af == AF_INET) {
         ip::address_v4::bytes_type rawip;
 
-        for (int i=0; i<rawip.max_size(); i++) {
+        for (unsigned int i=0; i<rawip.max_size(); i++) {
             rawip[i] = node.address[i];
         }
         
@@ -284,7 +479,7 @@ ip::udp::endpoint GossipProtocol::get_node_endpoint(
     else {
         ip::address_v6::bytes_type rawip;
         
-        for (int i=0; i<rawip.max_size(); i++) {
+        for (unsigned int i=0; i<rawip.max_size(); i++) {
             rawip[i] = node.address[i];
         }
 
@@ -293,5 +488,23 @@ ip::udp::endpoint GossipProtocol::get_node_endpoint(
         end.port(node.portnumber);
     }
     return end;
+}
+
+int GossipProtocol::construct_member_from_htmsg(struct MemberEntry& m, const HeartMsgStruct & hm)
+{
+
+    Address addr= hm.get_address();
+
+    m.heartbeat = hm.get_heartbeat();
+    m.tm_lasthb = time(NULL);
+    m.portnumber= addr.get_port();
+    m.type      = SOCK_STREAM;
+
+    int af;
+    const unsigned char* paddr = addr.get_ip_addr(&af);
+    m.af = af;
+    memcpy(m.address, paddr, addr.get_addr_len());
+
+    return 0;
 }
 
