@@ -118,6 +118,8 @@ public:
     // Only updates heartbeat message, 
     void bulk_update(const std::vector< struct MemberEntry > &, time_t now = time(NULL));
 
+    std::vector<bool> bulk_get(std::vector< struct MemberEntry > &);
+
     size_t size() const {
         if (m_ptab != nullptr) {
             return m_ptab->size();

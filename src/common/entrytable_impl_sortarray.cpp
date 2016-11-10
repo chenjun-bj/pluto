@@ -236,14 +236,50 @@ void entry_impl_sortarray::bulk_update(const std::vector< struct MemberEntry > &
         }
     }
 
+    while (i<v.size()) {
+        r.push_back(v[i]);
+    }
+
+    /*
     if (r.size()>0) {
         bulk_add(r);
+    }*/
+}
+
+std::vector<bool> entry_impl_sortarray::bulk_get(std::vector< struct MemberEntry > & v)
+{
+    std::vector<bool> rc;
+    if (v.size() == 0) return rc;
+
+    std::sort(v.begin(), v.end(), entry_less);
+
+    uint32 i, j;
+    for (i=j=0; (i<v.size()) && (j<m_tab->member_cnt); ) {
+        if (entry_less(m_mement[j], v[i])) {
+            j++;
+        }
+        else if (entry_less(v[i], m_mement[j])) {
+            rc.push_back(false);
+            i++;
+        }
+        else {
+            // equal
+            v[i].heartbeat = m_mement[j].heartbeat;
+            rc.push_back(true);
+            i++;
+            j++;
+        }
     }
+    while (i<v.size()) {
+        rc.push_back(false);
+    }
+
+    return rc;
 }
 
 const struct MemberEntry& entry_impl_sortarray::operator[](int i) const
 {
-    if (i<0 || i>m_tab->member_cnt) {
+    if (i<0 || (size_t)i>m_tab->member_cnt) {
         throw std::out_of_range("operator[]: " + std::to_string(i));
     }
     return m_mement[i];

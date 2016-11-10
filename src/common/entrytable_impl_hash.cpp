@@ -213,20 +213,37 @@ void entry_impl_hash::bulk_update(const std::vector< struct MemberEntry > & node
         struct MemberEntry tmp=e;
         tmp.tm_lasthb = now;
         if (get_node_heartbeat(tmp) == -1) {
-            insert(tmp);
+            // nop
+            //insert(tmp);
         } else {
             update(tmp);
         }
     }
 }
 
+std::vector<bool> entry_impl_hash::bulk_get(std::vector< struct MemberEntry > & nodes)
+{
+    std::vector<bool> rc;
+
+    for (auto& e : nodes) {
+       if (get_node_heartbeat(e) == -1) {
+           rc.push_back(false);
+       }
+       else {
+           rc.push_back(true);
+       }
+    }
+
+    return rc;
+}
+
 const struct MemberEntry& entry_impl_hash::operator[](int i) const
 {
-    if (i<0 || i>m_tab->member_cnt) {
+    if (i<0 || (size_t)i>m_tab->member_cnt) {
         throw std::out_of_range("opertor[] " + std::to_string(i));
     }
     int cnt=0;
-    for (int hash_idx=0; hash_idx < m_sz_hash; hash_idx++) {
+    for (unsigned int hash_idx=0; hash_idx < m_sz_hash; hash_idx++) {
         if (m_hash[hash_idx] != NIL_PTR) {
             for (int slot_idx=m_hash[hash_idx]; slot_idx != NIL_PTR;
                      slot_idx = m_mement[slot_idx].next) {

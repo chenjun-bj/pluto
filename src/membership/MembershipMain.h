@@ -17,8 +17,11 @@
  */
 #include "stdinclude.h"
 #include "memberlist.h"
+#include "MembershipServer.h"
+
 #include <string>
 
+#include <sys/ipc.h>
 /*
  *******************************************************************************
  *  Forward declaraction                                                       *
@@ -33,9 +36,16 @@
 
 class MembershipProcess{
 public:
-    MembershipProcess();
+    MembershipProcess(key_t ipckey);
     ~MembershipProcess();
 
+    void run();
+private:
+    MemberList m_member;
+    int        m_shmid;
+    void *     m_shmaddr;
+
+    MembershipServer * m_psvr;
 };
 
 /*

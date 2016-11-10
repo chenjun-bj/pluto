@@ -56,6 +56,7 @@ public:
     void bulk_add(const std::vector< struct MemberEntry > &);
     void bulk_update(const std::vector< struct MemberEntry > &, 
                              time_t now = std::time(NULL));
+    std::vector<bool> bulk_get(std::vector< struct MemberEntry > &);
     void clear();
     int32 compute_index(const struct MemberEntry &e) ;
 

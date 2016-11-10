@@ -178,6 +178,10 @@ int GossipProtocol::detect_node_error()
 
     std::vector< struct MemberEntry > detected;
     for (auto&& node : *m_pmember) {
+        if (is_self_node(node.af, node.address, node.portnumber)) {
+            // Should not delete ourselves
+            continue;
+        }
         if (node.tm_lasthb + TFAIL < now) {
             // detected failed node
             detected.push_back(node);
@@ -255,6 +259,7 @@ void GossipProtocol::handle_joinresponse(Message * msg)
     JoinResponseMessage* pmsg = dynamic_cast<JoinResponseMessage*>(msg);
     if (pmsg->get_status() != MsgStatus::OK) {
         // Error
+        getlog()->sendlog(LogLevel::ERROR, "Join response return failed\n");
         return;
     }
 
@@ -271,7 +276,7 @@ void GossipProtocol::handle_joinresponse(Message * msg)
             m.heartbeat = HEARTBEAT_INITIAL_VALUE;
         }
 
-        nodes.push_back( m );
+        nodes.emplace_back( m );
     }
 
     if (!am_in_list) {
@@ -284,7 +289,7 @@ void GossipProtocol::handle_joinresponse(Message * msg)
         m.type      = SOCK_STREAM;
         memcpy(m.address, m_self_rawip, PL_IPv6_ADDR_LEN);
 
-        nodes.push_back(m);
+        nodes.emplace_back(m);
     }
 
     m_pmember->bulk_add(nodes);
@@ -300,6 +305,28 @@ void GossipProtocol::handle_heartbeat(Message * msg)
     time_t now = time(NULL);
     vector< struct MemberEntry > ups;
     vector< struct MemberEntry > adds;
+
+    vector< struct MemberEntry > nodes;
+    for (auto &&n : pmsg->get_members()) {
+        struct MemberEntry m;
+        construct_member_from_htmsg(m, n);
+        if (is_self_node(m.af, m.address, m.portnumber)) {
+            // Do not update ourselves!!!
+            continue;
+        }
+        nodes.emplace_back(m);
+    }
+    vector<bool> rc = move(m_pmember->bulk_get(nodes));
+    for (unsigned int i=0; i<rc.size(); i++) {
+        if (rc[i]) {
+            ups.emplace_back(nodes[i]);
+        }
+        else {
+            adds.emplace_back(nodes[i]);
+        }
+    }
+
+    /*
     for (auto&& node : pmsg->get_members()) {
         struct MemberEntry m;
         construct_member_from_htmsg(m, node);
@@ -311,14 +338,14 @@ void GossipProtocol::handle_heartbeat(Message * msg)
         //       can leaverge sorted acceleration
         int rc = m_pmember->get_node_heartbeat(m.af, m.address, m.portnumber, &(m.heartbeat));
         if (rc != 0) {
-            adds.push_back(m);
+            adds.emplace_back(m);
             continue;
         } 
         if ((m.heartbeat > node.get_heartbeat()) ||
             (node.get_heartbeat() == HEARTBEAT_INITIAL_VALUE)) { 
-            ups.push_back(m);
+            ups.emplace_back(m);
         }
-    }
+    }*/
     m_pmember->bulk_update(ups, now);
     m_pmember->bulk_add(adds);
 }

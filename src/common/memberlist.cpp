@@ -240,6 +240,11 @@ void MemberList::bulk_update(const std::vector< struct MemberEntry > &nodes, tim
     m_ptab->bulk_update(nodes, now);
 }
 
+std::vector<bool> MemberList::bulk_get(std::vector< struct MemberEntry > & nodes)
+{
+    return std::move(m_ptab->bulk_get(nodes));
+}
+
 uint64 MemberList::get_magic_number() const
 {
     if (m_paddr) {

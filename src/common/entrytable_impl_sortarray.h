@@ -59,6 +59,7 @@ public:
     void bulk_add(const std::vector< struct MemberEntry > &);
     void bulk_update(const std::vector< struct MemberEntry > &, 
                      time_t now = std::time(NULL));
+    std::vector<bool> bulk_get(std::vector< struct MemberEntry > &);
     void clear();
 
     const struct MemberEntry& operator[](int i) const;

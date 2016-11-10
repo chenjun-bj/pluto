@@ -84,7 +84,7 @@ protected:
     int construct_member_from_htmsg(struct MemberEntry&, const HeartMsgStruct&);
 
     bool is_self_node(const boost::asio::ip::address &addr, unsigned short) const;
-    bool is_self_node(int af, unsigned char* addr, unsigned short) const;
+    bool is_self_node(int af, const unsigned char* addr, unsigned short) const;
 
 private:
     MemberList   * m_pmember;
@@ -118,7 +118,7 @@ inline bool GossipProtocol::is_self_node(const boost::asio::ip::address & addr,
     return true;
 }
 
-inline bool GossipProtocol:: is_self_node(int af, unsigned char* addr, 
+inline bool GossipProtocol:: is_self_node(int af, const unsigned char* addr, 
                                           unsigned short port) const
 {
     if (af != m_self_af) return false;

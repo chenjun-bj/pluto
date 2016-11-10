@@ -82,6 +82,8 @@ public:
     // Add not found data into memeber list
     virtual void bulk_update(const std::vector< struct MemberEntry > &, 
                              time_t now = std::time(NULL)) = 0;
+    virtual std::vector<bool> bulk_get(std::vector< struct MemberEntry > &) = 0;
+
     virtual void clear() = 0;
 
     virtual const struct MemberEntry& operator[](int i) const = 0;

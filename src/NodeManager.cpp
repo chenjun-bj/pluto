@@ -166,16 +166,18 @@ int NodeManager::startup()
     int status;
     while ((pid=wait(&status)) > 0) {
         if (m_b_running) {
-            int rc = 0;
-            if (pid == m_pid_membershipproc) {
-                rc = start_membership();
-            }
-            else if (pid == m_pid_storeproc) {
-                rc = start_store();
-            }
-            if (rc != 0) {
-                getlog()->sendlog(LogLevel::FATAL, "Restart process failed");
-                terminate();
+            if (!WIFEXITED(status)) {
+                int rc = 0;
+                if (pid == m_pid_membershipproc) {
+                    rc = start_membership();
+                }
+                else if (pid == m_pid_storeproc) {
+                    rc = start_store();
+                }
+                if (rc != 0) {
+                    getlog()->sendlog(LogLevel::FATAL, "Restart process failed");
+                    terminate();
+                }
             }
         }
     }

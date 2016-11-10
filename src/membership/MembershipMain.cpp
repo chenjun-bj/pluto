@@ -27,8 +27,10 @@
 
 #include <string>
 #include <iostream>
+#include <stdexcept>
 
 #include "MembershipMain.h"
+#include "MembershipServer.h"
 
 #include <boost/program_options.hpp>
 
@@ -43,6 +45,52 @@
  *  Type definitions                                                           *
  *******************************************************************************
  */
+MembershipProcess::MembershipProcess(key_t ipckey) :
+    m_member(),
+    m_shmid(-1),
+    m_shmaddr(nullptr),
+    m_psvr(nullptr)
+{
+    getlog()->sendlog(LogLevel::INFO, "Membership start\n");
+#define SHM_MODE    0400    /*User read*/
+    m_shmid = shmget(ipckey, 0, SHM_MODE);
+    if (m_shmid == -1) {
+        getlog()->sendlog(LogLevel::FATAL, "Membership: failed to get memory, errno=%d:%s\n",
+                                            errno, strerror(errno));
+        throw std::runtime_error("Fail to get shared memory, errno=" + std::to_string(errno));
+    }
+
+    m_shmaddr = shmat(m_shmid, nullptr, SHM_RDONLY);
+    if (m_shmaddr == (void*)-1) {
+        getlog()->sendlog(LogLevel::FATAL, "Membership: failed to attach memory, errno=%d:%s\n",
+                                           errno, strerror(errno));
+        throw std::runtime_error("Fail to attach memory, errno=" + std::to_string(errno));
+    }
+
+    if (!m_member.attach(m_shmaddr)) {
+        getlog()->sendlog(LogLevel::FATAL, "Membership load info failed\n");
+        throw std::runtime_error("Fail to attach member list");
+    }
+
+    m_psvr = new MembershipServer(GetConfigPortal(), &m_member, 0);
+}
+
+MembershipProcess::~MembershipProcess()
+{
+    getlog()->sendlog(LogLevel::INFO, "Membership exit\n");
+    if (m_psvr) {
+        delete m_psvr;
+    }
+
+    if (m_shmaddr) {
+        shmdt(m_shmaddr);
+    }
+}
+
+void MembershipProcess::run()
+{
+    m_psvr->run();
+}
 
 /*
  *******************************************************************************
@@ -53,6 +101,8 @@ int main(int argc, char* argv[])
 {
     namespace po = boost::program_options;
     using namespace std;
+
+    key_t ipckey = -1;
 
     try {
         po::options_description desc("allowed options");
@@ -75,6 +125,7 @@ int main(int argc, char* argv[])
         }
         if (vm.count("ipckey")) {
             getlog()->sendlog(LogLevel::INFO, "%d", vm["ipckey"].as<int>());
+            ipckey = vm["ipckey"].as<int>();
         }
         else {
             getlog()->sendlog(LogLevel::ERROR, "Missing ipckey\nUsage: %s option\n%s\n", 
@@ -84,6 +135,10 @@ int main(int argc, char* argv[])
         }
         if (vm.count("config")) {
             getlog()->sendlog(LogLevel::INFO, "%s", vm["config"].as<string>().c_str());
+            GetConfigPortal()->load(vm["config"].as<string>().c_str());
+            if (ipckey == -1) {
+                ipckey = GetConfigPortal()->get_ipckey();
+            }
         }
         else {
             getlog()->sendlog(LogLevel::ERROR, "Missing config\nUsage: %s option\n%s\n", 
@@ -96,6 +151,22 @@ int main(int argc, char* argv[])
     catch (exception & e) {
         cout << e.what() << endl;;
     }
+
+    if (ipckey == -1) {
+        getlog()->sendlog(LogLevel::ERROR, "Unable to get ipckey\n");
+        return 0;
+    }
+
+    try {
+        MembershipProcess memship(ipckey);
+
+        memship.run();
+    }
+    catch (std::exception & e) {
+        getlog()->sendlog(LogLevel::ERROR, "Membership exception: %s\n", e.what());
+        return 0;
+    }
+
     return 0;
 }
 
