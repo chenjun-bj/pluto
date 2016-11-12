@@ -50,7 +50,7 @@ public:
 private:
     int start_membership();
     int start_store();
-    pid_t start_process(const char* cmd);
+    pid_t start_process(const char* cmd, char *const argv[]);
 
     void cleanup();
 

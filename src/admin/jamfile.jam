@@ -1,0 +1,10 @@
+
+
+exe nodemanager 
+	: NodeManager.cpp  /pluto/common//plutcom /pluto/common//plutlog
+	;
+
+exe pladmin 
+	: NodeAdmin.cpp  /pluto/common//plutcom /pluto/common//plutlog
+        : <threading>multi <library>/boost//program_options
+	;
