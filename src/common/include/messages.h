@@ -94,11 +94,14 @@ inline std::string get_desc_msgtype(MsgType type)
 class Message {
 public:
     Message(unsigned char* msg, size_t sz, bool managebuf = true) :
-       m_pbuf(msg), m_bufsize(sz), m_managebuf(managebuf) {
+       m_pbuf(msg), m_bufsize(sz), m_managebuf(managebuf), m_hdr(),
+       m_src_addr(), m_dest_addr(), m_src_port(0), m_dest_port(0)  {
         m_hdr = { 0 };
     }
 
-    Message(MsgType type, int version=PLUTO_CURRENT_VERSION, int magic=PLUTO_MSG_MAGIC): m_pbuf(nullptr), m_bufsize(0), m_managebuf(false)  {
+    Message(MsgType type, int version=PLUTO_CURRENT_VERSION, int magic=PLUTO_MSG_MAGIC): 
+       m_pbuf(nullptr), m_bufsize(0), m_managebuf(false), m_hdr(),  
+       m_src_addr(), m_dest_addr(), m_src_port(0), m_dest_port(0)  {
         m_hdr.magic   = magic;
         m_hdr.version = version;
         m_hdr.type    = static_cast<uint32>(type);
@@ -237,12 +240,12 @@ public:
     void dump(int (*output)(const char*, ...)=printf,
               bool verbose=false) const {
         if (m_pbuf) {
+            dump_memory(NULL, (const char*)m_pbuf, m_bufsize);
             if (verbose) {
-                dump_memory(NULL, (const char*)m_pbuf, m_bufsize);
+                dump_address(output, verbose);
+                dump_hdr(output, verbose);
+                dump_body(output, verbose);
             }
-            dump_hdr(output, verbose);
-            dump_body(output, verbose);
-            
         }
     }
 
@@ -252,6 +255,12 @@ public:
         output("Version : %0X\n", get_version());
         output("MsgType : %s\n", get_desc_msgtype(get_msgtype()).c_str());
         output("Length  : %d\n", m_hdr.size);
+    }
+
+    void dump_address(int (*output)(const char*, ...)=std::printf, 
+                      bool verbose=false) const {
+        output("Source      : %s:%d\n", m_src_addr.to_string().c_str(), m_src_port);
+        output("Destination : %s:%d\n", m_dest_addr.to_string().c_str(), m_dest_port);
     }
 
     virtual void dump_body(int (*output)(const char*, ...)=printf,

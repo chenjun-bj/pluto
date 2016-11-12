@@ -168,6 +168,7 @@ void MemberList::del_node(int af, const uint8 * addr, unsigned short port)
     else {
         memcpy(node.address, addr, PL_IPv6_ADDR_LEN);
     }
+    node.type       = SOCK_STREAM;
     node.portnumber = port;
 
     m_ptab->erase(node);
@@ -195,6 +196,7 @@ void MemberList::update_node_heartbeat(int af, const uint8 * addr, unsigned shor
     else {
         memcpy(node.address, addr, PL_IPv6_ADDR_LEN);
     }
+    node.type       = SOCK_STREAM;
     node.portnumber = port;
     node.heartbeat = hb;
     node.tm_lasthb = now;
@@ -223,6 +225,7 @@ int MemberList::get_node_heartbeat(int af, const uint8 * addr, unsigned short po
     else {
         memcpy(node.address, addr, PL_IPv6_ADDR_LEN);
     }
+    node.type       = SOCK_STREAM;
     node.portnumber = port;
 
     int rc = m_ptab->get_node_heartbeat(node);
@@ -241,7 +244,7 @@ void MemberList::bulk_update(const std::vector< struct MemberEntry > &nodes, tim
     m_ptab->bulk_update(nodes, now);
 }
 
-std::vector<bool> MemberList::bulk_get(std::vector< struct MemberEntry > & nodes)
+std::vector<std::pair<bool, int64> > MemberList::bulk_get(const std::vector< struct MemberEntry > & nodes)
 {
     return std::move(m_ptab->bulk_get(nodes));
 }

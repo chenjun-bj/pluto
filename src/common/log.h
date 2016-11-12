@@ -58,7 +58,19 @@ public:
     void set_log_file(const char* fn);
     void sendlog(LogLevel level, const char* fmt, ...);
 
+    bool is_level_allowed(LogLevel level) {
+        // TODO: implement in future
+        return true;
+    }
+
+    typedef int (*PRINT)(const char*, ...);
+    PRINT get_print_handle() const ;
+
     static Log* get_instance();
+
+    friend int pl_log_write(const char*, ...);
+protected:
+    void sendlog(const char* fmt, va_list);
 private:
     static Log* s_inst;
     FILE* fd;

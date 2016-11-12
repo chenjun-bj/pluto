@@ -87,6 +87,7 @@ MembershipServer::MembershipServer(ConfigPortal * pcfg,
             m_udpsock.cancel();
             m_t.cancel();
             m_udpsock.close();
+            getlog()->sendlog(LogLevel::DEBUG, "Membership server received terminate signal\n"); 
         });
 
     // Bind to address
@@ -116,6 +117,7 @@ void MembershipServer::run()
 {
     m_done = false;
     m_io.run();
+    getlog()->sendlog(LogLevel::DEBUG, "Membership server exit\n"); 
 }
 
 void MembershipServer::do_receive()
@@ -143,10 +145,18 @@ void MembershipServer::do_receive()
             else {
                 if (result) {
                     pmsg->set_source(m_sender.address(), m_sender.port());
+
+                    getlog()->sendlog(LogLevel::DEBUG, "Membership server received message begin:\n");
+                    if (getlog()->is_level_allowed(LogLevel::DEBUG)) {
+                        pmsg->dump(getlog()->get_print_handle(), getlog()->is_level_allowed(LogLevel::TRACE));
+                    }
+                    getlog()->sendlog(LogLevel::DEBUG, "Membership server received message end\n");
+
                     m_prot->handle_messages(pmsg);
                 }
                 // !!! the memory is freed !!!
                 empty_buffer(m_sender);
+                do_receive();
             }
           }
         });
@@ -155,6 +165,7 @@ void MembershipServer::do_receive()
 
 void MembershipServer::do_send(Message * pmsg)
 {
+    getlog()->sendlog(LogLevel::DEBUG, "Membership send message=0x%x\n", pmsg);
     if (pmsg == nullptr) return;
 
     pair<ip::address, unsigned short> dest = pmsg->get_destination();
@@ -168,10 +179,18 @@ void MembershipServer::do_send(Message * pmsg)
         // TODO: what about if message of txid 0 has not sent complete?
     }
  
+    getlog()->sendlog(LogLevel::DEBUG, "send message txid=%d\n", txid);
+    getlog()->sendlog(LogLevel::DEBUG, "send message begin:\n");
+    if (getlog()->is_level_allowed(LogLevel::DEBUG)) {
+        pmsg->dump(getlog()->get_print_handle(), getlog()->is_level_allowed(LogLevel::TRACE));
+    }
+    getlog()->sendlog(LogLevel::DEBUG, "send message end\n");
+
     m_udpsock.async_send_to(
               boost::asio::buffer(pmsg->get_raw(), pmsg->get_size()),
               dest_end,
               [this, txid](boost::system::error_code /*ec*/, std::size_t /*bytes_sent*/) {
+                  getlog()->sendlog(LogLevel::DEBUG, "send message complete txid=%d\n", txid);
                   Message * todel = m_snd_que[txid];
                   if (todel) {
                       delete todel;
@@ -182,9 +201,11 @@ void MembershipServer::do_send(Message * pmsg)
 
 void MembershipServer::do_multicast(const vector<ip::udp::endpoint > &ends, Message * pmsg)
 {
+    getlog()->sendlog(LogLevel::DEBUG, "Membership send multicast message=0x%x\n", pmsg);
     if (pmsg == nullptr) return;
 
     if (ends.size()==0) {
+        getlog()->sendlog(LogLevel::DEBUG, "Membership send multicast no endpoints\n");
         delete pmsg;
         return;
     }
@@ -195,12 +216,23 @@ void MembershipServer::do_multicast(const vector<ip::udp::endpoint > &ends, Mess
         // TODO: what about if message of txid 0 has not sent complete?
     }
 
+    getlog()->sendlog(LogLevel::DEBUG, "multicast message txid=%d, endpoints count %d\n", 
+                                       txid,
+                                       ends.size());
+
     m_multicast_que[txid] = make_pair(ends.size(), pmsg);
-    auto multi_cmp = [this, txid](boost::system::error_code /*ec*/, std::size_t /*bytes_sent*/) {
+    auto multi_cmp = [this, txid](boost::system::error_code ec, std::size_t /*bytes_sent*/) {
                         multicast_info ctl = m_multicast_que[txid];
                         int cnt         = ctl.first;
                         Message * todel = ctl.second;
+                        getlog()->sendlog(LogLevel::DEBUG, "multicast message txid=%d one endpoint complete, remain %d\n", 
+                                                           txid, cnt-1);
+                        if (ec) {
+                            getlog()->sendlog(LogLevel::DEBUG, "multicast message txid=%d failed, ec=%d\n", 
+                                                               txid, ec);
+                        }
                         if (--cnt == 0) {
+                            getlog()->sendlog(LogLevel::DEBUG, "multicast message done txid=%d\n", txid);
                             if (todel) {
                                 delete todel;
                             }
@@ -210,7 +242,17 @@ void MembershipServer::do_multicast(const vector<ip::udp::endpoint > &ends, Mess
                             m_multicast_que[txid] = make_pair(cnt, todel);
                         }
                     };
+
+    getlog()->sendlog(LogLevel::DEBUG, "multicast message begin:\n");
+    if (getlog()->is_level_allowed(LogLevel::DEBUG)) {
+        pmsg->dump(getlog()->get_print_handle(), getlog()->is_level_allowed(LogLevel::TRACE));
+    }
+    getlog()->sendlog(LogLevel::DEBUG, "multicast message end\n");
+
     for (auto&& end : ends) {
+        getlog()->sendlog(LogLevel::DEBUG, "multicast to %s:%d\n", 
+                                           end.address().to_string().c_str(),
+                                           end.port());
         m_udpsock.async_send_to(
                   boost::asio::buffer(pmsg->get_raw(), pmsg->get_size()),
                   end,

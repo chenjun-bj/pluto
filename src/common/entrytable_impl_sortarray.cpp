@@ -18,6 +18,8 @@
 
 #include <cstring>
 
+#include "stdinclude.h"
+
 #include "entrytable_impl_sortarray.h"
 
 #define NIL_PTR -1
@@ -144,6 +146,18 @@ void entry_impl_sortarray::update(const struct MemberEntry& e)
         m_mement[i].heartbeat = tmp.heartbeat;
         m_mement[i].tm_lasthb = tmp.tm_lasthb;
     }
+    else {
+        getlog()->sendlog(LogLevel::ERROR, "ERROR, update node not found\n");
+        // TODO: remove following debug code
+        #if 0
+        getlog()->sendlog(LogLevel::ERROR, "update node:\n");
+        dump_node(tmp);
+        getlog()->sendlog(LogLevel::ERROR, "list nodes:\n");
+        for (uint32 i=0; i<m_tab->member_cnt; i++) {
+            dump_node(m_mement[i]);
+        }
+        #endif
+    }
 }
 
 int entry_impl_sortarray::get_node_heartbeat(struct MemberEntry & e)
@@ -240,17 +254,32 @@ void entry_impl_sortarray::bulk_update(const std::vector< struct MemberEntry > &
         r.push_back(v[i]);
     }
 
+    // TODO: remove following debug code
+    #if 0
+    if (r.size()>0) {
+        getlog()->sendlog(LogLevel::ERROR, "update node failed:\n");
+        for (auto && e : r) {
+            dump_node(e);
+        }
+        getlog()->sendlog(LogLevel::ERROR, "list nodes:\n");
+        for (uint32 i=0; i<m_tab->member_cnt; i++) {
+            dump_node(m_mement[i]);
+        }
+    }
+    #endif
     /*
     if (r.size()>0) {
         bulk_add(r);
     }*/
 }
 
-std::vector<bool> entry_impl_sortarray::bulk_get(std::vector< struct MemberEntry > & v)
+std::vector<std::pair<bool, int64> > entry_impl_sortarray::bulk_get(
+                                         const std::vector< struct MemberEntry > & g)
 {
-    std::vector<bool> rc;
-    if (v.size() == 0) return rc;
+    std::vector<std::pair<bool, int64> > rc;
+    if (g.size() == 0) return rc;
 
+    std::vector<struct MemberEntry > v(g);
     std::sort(v.begin(), v.end(), entry_less);
 
     uint32 i, j;
@@ -259,19 +288,18 @@ std::vector<bool> entry_impl_sortarray::bulk_get(std::vector< struct MemberEntry
             j++;
         }
         else if (entry_less(v[i], m_mement[j])) {
-            rc.push_back(false);
+            rc.push_back(std::make_pair(false, -1));
             i++;
         }
         else {
             // equal
-            v[i].heartbeat = m_mement[j].heartbeat;
-            rc.push_back(true);
+            rc.push_back(std::make_pair(true, m_mement[j].heartbeat));
             i++;
             j++;
         }
     }
     while (i<v.size()) {
-        rc.push_back(false);
+        rc.push_back(std::make_pair(false, -1));
     }
 
     return rc;

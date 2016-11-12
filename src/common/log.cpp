@@ -21,6 +21,8 @@
  *******************************************************************************
  */
 
+int pl_log_write(const char* fmt, ...);
+
 /*
  *******************************************************************************
  *  Class declaraction                                                         *
@@ -57,19 +59,41 @@ void Log::set_log_file(const char* fn)
 
 void Log::sendlog(LogLevel level, const char* fmt, ...)
 {
-    va_list args;
-    va_start(args, fmt);
+    if (is_level_allowed(level)) {
+        va_list args;
+        va_start(args, fmt);
+        sendlog(fmt, args);
+        va_end(args);
+    }
+}
+
+void Log::sendlog(const char* fmt, va_list args)
+{
     if (fd) {
         vfprintf(fd, fmt, args);
     }
     else {
         vprintf(fmt, args);
     }
-    va_end(args);
+}
+
+Log::PRINT Log::get_print_handle() const 
+{
+    return pl_log_write;
 }
 
 Log* getlog()
 {
     return Log::get_instance();
+}
+
+int pl_log_write(const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    getlog()->sendlog(fmt, args);
+    va_end(args);
+
+    return 0;
 }
 

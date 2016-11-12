@@ -221,16 +221,17 @@ void entry_impl_hash::bulk_update(const std::vector< struct MemberEntry > & node
     }
 }
 
-std::vector<bool> entry_impl_hash::bulk_get(std::vector< struct MemberEntry > & nodes)
+std::vector<std::pair<bool, int64> > entry_impl_hash::bulk_get(const std::vector< struct MemberEntry > & nodes)
 {
-    std::vector<bool> rc;
+    std::vector<std::pair<bool, int64> > rc;
 
     for (auto& e : nodes) {
-       if (get_node_heartbeat(e) == -1) {
-           rc.push_back(false);
+       struct MemberEntry tmp = e;
+       if (get_node_heartbeat(tmp) == -1) {
+           rc.push_back(std::make_pair(false, -1));
        }
        else {
-           rc.push_back(true);
+           rc.push_back(std::make_pair(true, tmp.heartbeat));
        }
     }
 

@@ -86,6 +86,8 @@ protected:
     bool is_self_node(const boost::asio::ip::address &addr, unsigned short) const;
     bool is_self_node(int af, const unsigned char* addr, unsigned short) const;
 
+    void print_node_address(const struct MemberEntry& ) const;
+    void print_node_address(int af, const unsigned char* addr, unsigned short port) const;
 private:
     MemberList   * m_pmember;
     ConfigPortal * m_pconfig;

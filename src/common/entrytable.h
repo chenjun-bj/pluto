@@ -18,6 +18,7 @@
 #include <ctime>
 #include <cstring>
 
+#include <utility>
 #include <vector>
 
 #include <boost/functional/hash.hpp>
@@ -25,6 +26,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include "stdinclude.h"
 #include "pltypes.h"
 #include "pladdress.h"
 /*
@@ -82,12 +84,30 @@ public:
     // Add not found data into memeber list
     virtual void bulk_update(const std::vector< struct MemberEntry > &, 
                              time_t now = std::time(NULL)) = 0;
-    virtual std::vector<bool> bulk_get(std::vector< struct MemberEntry > &) = 0;
+    virtual std::vector<std::pair<bool, int64> > bulk_get(
+                                           const std::vector< struct MemberEntry > &) = 0;
 
     virtual void clear() = 0;
 
     virtual const struct MemberEntry& operator[](int i) const = 0;
     virtual std::size_t size() const = 0;
+
+    void dump_node(const struct MemberEntry & e) {
+        getlog()->sendlog(LogLevel::DEBUG, "Member\n");
+        getlog()->sendlog(LogLevel::DEBUG, "hash      = %lx\n", e.hashcode);
+        getlog()->sendlog(LogLevel::DEBUG, "id        = %lx\n", e.id);
+        getlog()->sendlog(LogLevel::DEBUG, "heartbeat = %lx\n", e.heartbeat);
+        getlog()->sendlog(LogLevel::DEBUG, "tm_lasthb = %lx\n", e.tm_lasthb);
+        getlog()->sendlog(LogLevel::DEBUG, "af        = %d\n",  e.af);
+        getlog()->sendlog(LogLevel::DEBUG, "type      = %d\n",  e.type);
+        getlog()->sendlog(LogLevel::DEBUG, "port      = %d\n",  e.portnumber);
+        getlog()->sendlog(LogLevel::DEBUG, "addr      = ");
+        unsigned int i;
+        for (i=0; i< PL_IPv6_ADDR_LEN - 1; i++) {
+            getlog()->sendlog(LogLevel::DEBUG, "%X.", e.address[i]);
+        }
+        getlog()->sendlog(LogLevel::DEBUG, "%X\n", e.address[i]);
+    }
 protected:
 private:
 };
@@ -142,7 +162,8 @@ inline std::size_t entry_hash(const struct MemberEntry& e)
     std::size_t seed = 0;
     boost::hash_combine(seed, e.af);
     boost::hash_combine(seed, e.portnumber);
-    boost::hash_range(seed, e.address, e.address+16);
+    int addrsize = e.af == AF_INET ? 4 : 16;
+    boost::hash_range(seed, e.address, e.address+addrsize);
 
     return seed; 
 }
