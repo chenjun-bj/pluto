@@ -76,12 +76,17 @@ public:
 
     std::string get_protocol() const;
     long get_gossipb() const;
-        
+
+    const std::string& get_config_filename() const {
+        return m_cfg_fn;
+    }
+
     static ConfigPortal* get_config();
 private:
     static ConfigPortal* s_inst;
 
     boost::property_tree::ptree m_ptree;    
+    std::string  m_cfg_fn;
 };
 
 /*

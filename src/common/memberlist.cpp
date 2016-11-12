@@ -140,7 +140,8 @@ void MemberList::add_node(int af, const uint8 * addr, unsigned short port,
     else {
         memcpy(node.address, addr, PL_IPv6_ADDR_LEN);
     }
-    node.portnumber = port;
+    node.portnumber= port;
+    node.type      = SOCK_STREAM;
     node.heartbeat = hb;
     node.tm_lasthb = now;
 

@@ -52,6 +52,9 @@
 /* Environment variable names */
 #define ENV_NM_BASE_IPCKEY    "PLUTO_IPCKEY" 
 
+#define    PLSUCCESS    0
+#define    PLERROR      1
+
 /**
  *******************************************************************************
  * Function declaractions                                                      *

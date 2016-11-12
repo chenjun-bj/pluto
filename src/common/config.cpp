@@ -17,6 +17,9 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include <stdlib.h>
+#include <limits.h>
+#include <unistd.h>
+
 #include "stdinclude.h"
 #include "config.h"
 
@@ -56,7 +59,7 @@ ConfigPortal* ConfigPortal::get_config()
     return s_inst;
 }
 
-ConfigPortal::ConfigPortal() : m_ptree()
+ConfigPortal::ConfigPortal() : m_ptree(), m_cfg_fn()
 {
 }
 
@@ -67,6 +70,7 @@ ConfigPortal::~ConfigPortal()
 bool ConfigPortal::load(const string& filename)
 {
     namespace pt = boost::property_tree;
+    char path[4096] = { '\0' };
 
     string suffix;
     string::size_type pos = filename.find_last_of('.');
@@ -77,6 +81,9 @@ bool ConfigPortal::load(const string& filename)
     try {
         if (strcasecmp(suffix.c_str(), "JSON") == 0) {
             pt::read_json(filename, m_ptree);
+            if (realpath(filename.c_str(), path) != nullptr) {;
+                m_cfg_fn = path;
+            }
             return true;
         }
     }

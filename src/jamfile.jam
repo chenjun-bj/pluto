@@ -1,17 +1,7 @@
 
-exe nodemanager 
-	: NodeManager.cpp  /pluto/common//plutcom /pluto/common//plutlog
-	;
+project : default-build debug ; 
 
-exe pladmin 
-	: NodeAdmin.cpp  /pluto/common//plutcom /pluto/common//plutlog
-        : <threading>multi <library>/boost//program_options
-	;
-exe test 
-	: test.cpp  [ glob membership/*.cpp : membership/MembershipMain.cpp ] /pluto/common//plutcom /pluto/common//plutlog
-        : <include>membership
-	;
-exe tstmem 
-	: tstmem.cpp /pluto/common//plutcom /pluto/common//plutlog
-        : <include>membership
-        ;
+build-project common ;
+build-project admin ;
+build-project membership ;
+

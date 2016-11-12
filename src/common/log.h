@@ -55,7 +55,7 @@ private:
     Log(); 
 public:
     ~Log() ;
-    void set_log_file(char* fn);
+    void set_log_file(const char* fn);
     void sendlog(LogLevel level, const char* fmt, ...);
 
     static Log* get_instance();

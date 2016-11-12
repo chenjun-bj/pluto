@@ -21,6 +21,9 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <signal.h>
+#include <unistd.h>
+
+#include <libgen.h>
 
 #include <errno.h>
 #include <string.h>
@@ -52,7 +55,7 @@ MembershipProcess::MembershipProcess(key_t ipckey) :
     m_psvr(nullptr)
 {
     getlog()->sendlog(LogLevel::INFO, "Membership start\n");
-#define SHM_MODE    0400    /*User read*/
+#define SHM_MODE    0600    /*User read/wirte */
     m_shmid = shmget(ipckey, 0, SHM_MODE);
     if (m_shmid == -1) {
         getlog()->sendlog(LogLevel::FATAL, "Membership: failed to get memory, errno=%d:%s\n",
@@ -60,7 +63,7 @@ MembershipProcess::MembershipProcess(key_t ipckey) :
         throw std::runtime_error("Fail to get shared memory, errno=" + std::to_string(errno));
     }
 
-    m_shmaddr = shmat(m_shmid, nullptr, SHM_RDONLY);
+    m_shmaddr = shmat(m_shmid, nullptr, 0);
     if (m_shmaddr == (void*)-1) {
         getlog()->sendlog(LogLevel::FATAL, "Membership: failed to attach memory, errno=%d:%s\n",
                                            errno, strerror(errno));
@@ -121,40 +124,44 @@ int main(int argc, char* argv[])
 
         if (vm.count("help")) {
             getlog()->sendlog(LogLevel::INFO, "%s", stream.str().c_str());
-            return 0;
+            return PLERROR;
         }
+
         if (vm.count("ipckey")) {
-            getlog()->sendlog(LogLevel::INFO, "%d", vm["ipckey"].as<int>());
+            getlog()->sendlog(LogLevel::INFO, "ipckey: %d\n", vm["ipckey"].as<int>());
             ipckey = vm["ipckey"].as<int>();
         }
-        else {
-            getlog()->sendlog(LogLevel::ERROR, "Missing ipckey\nUsage: %s option\n%s\n", 
-                                     argv[0], 
-                                     stream.str().c_str());
-            return 0;
-        }
+
         if (vm.count("config")) {
-            getlog()->sendlog(LogLevel::INFO, "%s", vm["config"].as<string>().c_str());
+            getlog()->sendlog(LogLevel::INFO, "configuration file: %s\n", vm["config"].as<string>().c_str());
             GetConfigPortal()->load(vm["config"].as<string>().c_str());
             if (ipckey == -1) {
                 ipckey = GetConfigPortal()->get_ipckey();
+            }
+            std::string logpath = std::move(GetConfigPortal()->get_logpath());
+            if (logpath.length()>0) {
+                logpath = logpath + "/" + basename(argv[0]) + "." + std::to_string(getpid());
+                
+                getlog()->set_log_file(logpath.c_str());
             }
         }
         else {
             getlog()->sendlog(LogLevel::ERROR, "Missing config\nUsage: %s option\n%s\n", 
                                      argv[0], 
                                      stream.str().c_str());
-            return 0;
+            return PLERROR;
         }
 
     }
     catch (exception & e) {
-        cout << e.what() << endl;;
+        getlog()->sendlog(LogLevel::ERROR, "Exception during parse option: %s\n",
+                                           e.what());
+        return PLERROR;
     }
 
     if (ipckey == -1) {
         getlog()->sendlog(LogLevel::ERROR, "Unable to get ipckey\n");
-        return 0;
+        return PLERROR;
     }
 
     try {
@@ -164,9 +171,9 @@ int main(int argc, char* argv[])
     }
     catch (std::exception & e) {
         getlog()->sendlog(LogLevel::ERROR, "Membership exception: %s\n", e.what());
-        return 0;
+        return PLERROR;
     }
 
-    return 0;
+    return PLSUCCESS;
 }
 

@@ -48,7 +48,7 @@ Log::~Log()
     }
 }
 
-void Log::set_log_file(char* fn)
+void Log::set_log_file(const char* fn)
 {
     if (fn) {
         fd = fopen(fn, "a");
