@@ -52,8 +52,12 @@ bool ScopeLock::lock()
     if (m_pmutex) {
         while ( pthread_mutex_lock(m_pmutex) != 0 ) {
             if (errno==EOWNERDEAD) { 
+#ifdef __linux__
                 // TODO: check implementation on Linux
                 pthread_mutex_consistent(m_pmutex);
+#else
+                return false;
+#endif
             }
             else {
                 return false;
@@ -66,9 +70,11 @@ bool ScopeLock::lock()
 
 bool ScopeLock::timedlock(struct timespec * tp)
 {
+#ifdef __linux__
     if ((m_pmutex) && tp) {
         return pthread_mutex_timedlock(m_pmutex, tp);
     }
+#endif
     return false;
 }
 bool ScopeLock::trylock()

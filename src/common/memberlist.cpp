@@ -103,7 +103,7 @@ bool MemberList::init_entry_table(bool create)
         return false;
     }
 
-    void * entry_ptr = (void*)m_paddr + offsetof(Membership, ent_tab);
+    void * entry_ptr = ((char*)m_paddr + offsetof(Membership, ent_tab));
     m_ptab = new entry_impl_sortarray(entry_ptr, m_paddr->ring_size, create);
 
     return true;

@@ -9,7 +9,7 @@
  */
 
 #ifndef _STD_INCLUDE_H_
-#define _STD_INLCUDE_H_
+#define _STD_INCLUDE_H_
 
 
 /**
