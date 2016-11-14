@@ -225,3 +225,31 @@ boost::asio::ip::tcp::endpoint ip2tcpend(const string& ip, unsigned short port)
 
     return ep;
 }
+
+boost::asio::ip::address rawip2address(int af, const unsigned char *ip)
+{
+    using namespace boost::asio;
+
+    if (af == AF_INET) {
+        ip::address_v4::bytes_type rawip;
+
+        for (unsigned int i=0; i<rawip.max_size(); i++) {
+            rawip[i] = ip[i];
+        }
+        
+        ip::address_v4 addr(rawip);
+        return addr;
+    }
+    else if (af == AF_INET6) {
+        ip::address_v6::bytes_type rawip;
+        
+        for (unsigned int i=0; i<rawip.max_size(); i++) {
+            rawip[i] = ip[i];
+        }
+
+        ip::address_v6 addr(rawip);
+        return addr;
+    }
+
+    return boost::asio::ip::address();
+}

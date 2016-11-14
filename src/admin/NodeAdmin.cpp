@@ -22,6 +22,8 @@
 #include <iostream>
 #include <boost/program_options.hpp>
 
+#include "AdminCmd.h"
+
 /*
  *******************************************************************************
  *  Declaractions                                                              *

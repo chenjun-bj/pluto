@@ -109,12 +109,22 @@ bool MemberList::init_entry_table(bool create)
     return true;
 }
 
-entry_iterator MemberList::begin()
+entry_iterator MemberList::begin() const
 {
     return entry_iterator(*m_ptab);
 }
 
-entry_iterator MemberList::end()
+entry_iterator MemberList::end() const
+{
+    return entry_iterator(*m_ptab, true);
+}
+
+entry_iterator MemberList::begin() 
+{
+    return entry_iterator(*m_ptab);
+}
+
+entry_iterator MemberList::end() 
 {
     return entry_iterator(*m_ptab, true);
 }

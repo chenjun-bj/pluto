@@ -41,5 +41,7 @@ void dump_memory(const char* cap, const char* data, unsigned long sz,
 boost::asio::ip::udp::endpoint ip2udpend(const std::string& ip, unsigned short port);
 boost::asio::ip::tcp::endpoint ip2tcpend(const std::string& ip, unsigned short port);
 
+boost::asio::ip::address rawip2address(int af, const unsigned char *rawip);
+
 #endif // _UTIL_H_
 

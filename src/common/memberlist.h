@@ -103,6 +103,9 @@ public:
     entry_iterator begin();
     entry_iterator end();
 
+    entry_iterator begin() const;
+    entry_iterator end() const;
+
     void add_node(int af, const uint8 * addr, unsigned short port,
                   int64 hb, time_t now = std::time(NULL));
     void del_node(int af, const uint8 * addr, unsigned short port);

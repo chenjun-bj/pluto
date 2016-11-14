@@ -240,7 +240,7 @@ public:
     void dump(int (*output)(const char*, ...)=printf,
               bool verbose=false) const {
         if (m_pbuf) {
-            dump_memory(NULL, (const char*)m_pbuf, m_bufsize);
+            dump_memory(NULL, (const char*)m_pbuf, m_bufsize, output);
             if (verbose) {
                 dump_address(output, verbose);
                 dump_hdr(output, verbose);

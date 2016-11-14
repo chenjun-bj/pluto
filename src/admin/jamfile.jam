@@ -5,6 +5,6 @@ exe nodemanager
 	;
 
 exe pladmin 
-	: NodeAdmin.cpp  /pluto/common//plutcom /pluto/common//plutlog
+	: NodeAdmin.cpp  AdminCmd.cpp /pluto/common//plutcom /pluto/common//plutlog
         : <threading>multi <library>/boost//program_options
 	;
