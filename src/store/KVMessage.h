@@ -1,13 +1,13 @@
 /**
  *******************************************************************************
- * KVReqMessage.h                                                              *
+ * KVMessage.h                                                                 *
  *                                                                             *
- * Store message commons                                                       *
+ * Key value message commons                                                   *
  *******************************************************************************
  */
 
-#ifndef _CREATE_MSG_H_
-#define _CREATE_MSG_H_
+#ifndef _KEY_VALUE_MSG_H_
+#define _KEY_VALUE_MSG_H_
 
 /**
  *******************************************************************************
@@ -192,6 +192,14 @@ public:
     virtual ~KVRespMessage() {
     }
 
+    void set_status(MsgStatus status) {
+        m_status = status;
+    }
+
+    MsgStatus get_status() const {
+        return m_status;
+    }
+
     int build_storemsg_body(unsigned char* buf, size_t sz) {
         /**
          * Format:
@@ -252,21 +260,21 @@ private:
     MsgStatus m_status;
 };
 
-class KMessage : public StoreMessage {
+class KeyReqMessage : public StoreMessage {
 public:
-    KMessage(unsigned char* buf, const size_t sz, bool managebuf = false) :
+    KeyReqMessage(unsigned char* buf, const size_t sz, bool managebuf = false) :
        StoreMessage(buf, sz, managebuf),
        m_key() {
     };
   
-    KMessage(MsgType type,
-             MessageOriginator originator,
-             int64 txid) :
+    KeyReqMessage(MsgType type,
+                  MessageOriginator originator,
+                  int64 txid) :
        StoreMessage(type, originator, txid),
        m_key() {
     }
 
-    virtual ~KMessage() {
+    virtual ~KeyReqMessage() {
     }
 
     void set_key(const std::string& key) {
@@ -285,12 +293,12 @@ public:
          *  pad -- to 4 bytes
          */
         if (buf == nullptr) {
-            getlog()->sendlog(LogLevel::ERROR, "Key message, build body nullptr received\n");
+            getlog()->sendlog(LogLevel::ERROR, "Key request message, build body nullptr received\n");
             return -1;
         }
 
         if (sz < get_storemsg_bodysize()) {
-            getlog()->sendlog(LogLevel::ERROR, "Key message, build body no enough buffer, size=%d, required %d\n",
+            getlog()->sendlog(LogLevel::ERROR, "Key request message, build body no enough buffer, size=%d, required %d\n",
                                                 sz, get_storemsg_bodysize());
             return -1;
         }
@@ -310,18 +318,18 @@ public:
     void parse_storemsg_body(const unsigned char* buf, const size_t sz)
        throw (parse_error) {
         if (buf == nullptr) {
-            throw parse_error("KMessage: parse got null ptr!");
+            throw parse_error("KeyReqMessage: parse got null ptr!");
         }
 
         if (sz < sizeof(int64)) {
-            throw parse_error("KMessage: invalid length expected: " + std::to_string(sizeof(int64)));
+            throw parse_error("KeyReqMessage: invalid length expected: " + std::to_string(sizeof(int64)));
         }
 
         int64 lval = network_read_int64(buf);
         buf += sizeof(int64);
 
         if (sz < lval + sizeof(int64)) {
-            throw parse_error("KMessage: in-complete message, recevied size: " + std::to_string(sz));
+            throw parse_error("KeyReqMessage: in-complete message, recevied size: " + std::to_string(sz));
         }
         std::string mstr((const char*)buf, lval);
         m_key = mstr;
@@ -341,21 +349,24 @@ private:
     std::string m_key;
 };
 
-class VMessage : public StoreMessage {
+class KeyRespMessage : public StoreMessage {
 public:
-    VMessage(unsigned char* buf, const size_t sz, bool managebuf = false) :
+    KeyRespMessage(unsigned char* buf, const size_t sz, bool managebuf = false) :
        StoreMessage(buf, sz, managebuf),
-       m_value() {
+       m_value(),
+       m_status(MsgStatus::OK) {
     };
   
-    VMessage(MsgType type,
-             MessageOriginator originator,
-             int64 txid) :
+    KeyRespMessage(MsgType type,
+                   MessageOriginator originator,
+                   int64 txid,
+                   MsgStatus status) :
        StoreMessage(type, originator, txid),
-       m_value() {
+       m_value(),
+       m_status(status) {
     }
 
-    virtual ~VMessage() {
+    virtual ~KeyRespMessage() {
     }
 
     void set_value(const unsigned char* val, size_t sz) {
@@ -375,23 +386,41 @@ public:
         return 0;
     }
 
+    void set_status(MsgStatus status) {
+        m_status = status;
+    }
+
+    MsgStatus get_status() const {
+        return m_status;
+    }
+
     int build_storemsg_body(unsigned char* buf, size_t sz) {
         /**
          * Format:
+         *  int32 -- status
+         *  int32 -- reserved
          *  int64 -- value length
          *  char array -- keys
          *  pad -- to 4 bytes
          */
         if (buf == nullptr) {
-            getlog()->sendlog(LogLevel::ERROR, "Value message, build body nullptr received\n");
+            getlog()->sendlog(LogLevel::ERROR, "Key response message, build body nullptr received\n");
             return -1;
         }
 
         if (sz < get_storemsg_bodysize()) {
-            getlog()->sendlog(LogLevel::ERROR, "Value message, build body no enough buffer, size=%d, required %d\n",
+            getlog()->sendlog(LogLevel::ERROR, "Key response message, build body no enough buffer, size=%d, required %d\n",
                                                 sz, get_storemsg_bodysize());
             return -1;
         }
+
+        int32 ival = htonl(static_cast<int32>(m_status));
+        memcpy(buf, &ival, sizeof(int32));
+        buf += sizeof(int32);
+
+        ival = 0; 
+        memcpy(buf, &ival, sizeof(int32));
+        buf += sizeof(int32);
 
         network_write_int64(buf, m_value.size());
         buf += sizeof(int64);
@@ -408,18 +437,35 @@ public:
     void parse_storemsg_body(const unsigned char* buf, const size_t sz)
        throw (parse_error) {
         if (buf == nullptr) {
-            throw parse_error("VMessage: parse got null ptr!");
+            throw parse_error("KeyRespMessage: parse got null ptr!");
         }
 
         if (sz < sizeof(int64)) {
-            throw parse_error("VMessage: invalid length expected: " + std::to_string(sizeof(int64)));
+            throw parse_error("KeyRespMessage: invalid length expected: " + std::to_string(sizeof(int64)));
         }
+
+        int32 ival;
+        memcpy(&ival, buf, sizeof(int32));
+        buf += sizeof(int32);
+        ival = ntohl(ival);
+
+        int hi, low;
+        low = static_cast<int>(MsgStatus::PLUTO_FIRST);
+        hi  = static_cast<int>(MsgStatus::PLUTO_LAST);
+        if (ival<=low || ival>hi) {
+            throw parse_error("KVRespMessage: invalid status message");
+        }
+        m_status = static_cast<MsgStatus>(ival);
+       
+        // The reserved field 
+        memcpy(&ival, buf, sizeof(int32));
+        buf += sizeof(int32);
 
         int64 lval = network_read_int64(buf);
         buf += sizeof(int64);
 
         if (sz < lval + sizeof(int64)) {
-            throw parse_error("VMessage: in-complete message, recevied size: " + std::to_string(sz));
+            throw parse_error("KeyRespMessage: in-complete message, recevied size: " + std::to_string(sz));
         }
 
         m_value.clear();
@@ -431,7 +477,7 @@ public:
     }
 
     size_t get_storemsg_bodysize() const {
-        return sizeof(int64) + (m_value.size()+3)/4*4;
+        return 2*sizeof(int32) + sizeof(int64) + (m_value.size()+3)/4*4;
     }
 
     void dump_storemsg_body(int (*output)(const char*, ...)=printf,
@@ -446,6 +492,7 @@ public:
     }
 private:
     std::vector<unsigned char> m_value;
+    MsgStatus                  m_status;
 };
 
 /**
@@ -454,5 +501,5 @@ private:
  *******************************************************************************
  */
 
-#endif // _CREATE_MSG_H_
+#endif // _KEY_VALUE_MSG_H_
 
