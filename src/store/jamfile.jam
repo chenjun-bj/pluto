@@ -1,0 +1,5 @@
+
+exe plstore 
+	: [ glob *.cpp ]  /pluto/common//plutcom /pluto/common//plutlog
+        : <threading>multi <library>/boost//program_options <library>/boost//system
+	;

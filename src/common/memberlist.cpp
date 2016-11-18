@@ -256,6 +256,7 @@ void MemberList::bulk_update(const std::vector< struct MemberEntry > &nodes, tim
 
 std::vector<std::pair<bool, int64> > MemberList::bulk_get(const std::vector< struct MemberEntry > & nodes)
 {
+    // std::move may prevent copy elision, but whatever
     return std::move(m_ptab->bulk_get(nodes));
 }
 

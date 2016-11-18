@@ -26,6 +26,7 @@ PLUTO
 
 1.4 Build pass: Linux, Mac
 
+
 2. TODO
 
 2.1 Store implementation;
@@ -35,4 +36,8 @@ PLUTO
 2.3 Error handling: some code throws exception for error case, which is not handled properly;
 
 2.4 Test;
+
+2.5 using namespace to isolate pluto from others;
+
+2.6 Enrich log, both the log service and logging point;
 

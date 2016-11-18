@@ -17,6 +17,9 @@
 #include <cstdlib>
 #include <cctype>
 
+#include <string>
+#include <stdexcept>
+
 #include <signal.h>
 #include <syslog.h>
 #include <errno.h>
@@ -229,6 +232,10 @@ boost::asio::ip::tcp::endpoint ip2tcpend(const string& ip, unsigned short port)
 boost::asio::ip::address rawip2address(int af, const unsigned char *ip)
 {
     using namespace boost::asio;
+
+    if ((af != AF_INET) && (af != AF_INET6)) {
+        throw std::invalid_argument("invalid address family: " + std::to_string(af));
+    }
 
     if (af == AF_INET) {
         ip::address_v4::bytes_type rawip;

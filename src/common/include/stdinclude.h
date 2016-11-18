@@ -42,6 +42,9 @@
 #define KV_RING_MIN_SIZE 1       // Minimum size of the ring
 #define KV_RING_MAX_SIZE 32768   // Maximum ring size that can be supported.
 
+// Must be a odd number
+#define PLUTO_NODE_REPLICAS_NUM    3
+
 /* Membership protocol parameters */
 #define MEM_PROT_DEF_TFAIL     5
 #define MEM_PROT_DEF_TREMOVE   20
