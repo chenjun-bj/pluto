@@ -47,7 +47,13 @@ StoreServer::StoreServer(ConfigPortal * pcfg,
    m_pcfg(pcfg),
    m_io(),
    m_signals(m_io),
-   m_acceptor(m_io)
+   m_acceptor(m_io),
+   m_new_sock(m_io),
+   m_conn_mgr(m_io),
+   m_fact(),
+   m_store(),
+   m_store_acc(m_io, m_store),
+   m_handler(m_io, m_conn_mgr, m_store_acc)
 {
 
     m_signals.add(SIGINT);
@@ -57,6 +63,9 @@ StoreServer::StoreServer(ConfigPortal * pcfg,
 #endif // defined(SIGQUIT)
     m_signals.async_wait([this](const boost::system::error_code ec, int signum) {
             m_done = true;
+            m_acceptor.close();
+            m_conn_mgr.stop_all();
+
             getlog()->sendlog(LogLevel::DEBUG, "Store server received terminate signal\n"); 
         });
 
@@ -73,7 +82,7 @@ StoreServer::StoreServer(ConfigPortal * pcfg,
     m_acceptor.bind(bind_addr);
     m_acceptor.listen();
 
-    //start_accept();
+    start_accept();
 }
  
 void StoreServer::run()
@@ -82,8 +91,7 @@ void StoreServer::run()
 
     vector<shared_ptr<thread> > thrds;
     for (size_t i=0; i<m_thread_pool_sz; i++) {
-        shared_ptr<thread> thrd(new thread([this](){ m_io.run(); }));
-        thrds.push_back(thrd);
+        thrds.push_back(make_shared<thread >([this](){ m_io.run(); }));
     }
 
     for (size_t i=0; i<thrds.size(); i++) {
@@ -94,14 +102,29 @@ void StoreServer::run()
     getlog()->sendlog(LogLevel::DEBUG, "Store server exit\n"); 
 }
 
-void StoreServer::do_receive()
+void StoreServer::start_accept()
 {
+    //m_new_connection.reset(new Connection(m_io, m_handler));
+    m_acceptor.async_accept(m_new_sock,
+                            [this](const boost::system::error_code & ec) {
+                                if (!m_acceptor.is_open()) {
+                                }
+                                if (!ec) {
+                                    m_conn_mgr.start(make_shared<Connection >(
+                                        move(m_new_sock), m_io, m_conn_mgr, m_handler, m_fact));
+                                }
+                                start_accept();
+                            });
 }
 
-void StoreServer::do_send(StoreMessage * pmsg)
-{
-}
-
+//void StoreServer::do_receive()
+//{
+//}
+//
+//void StoreServer::do_send(StoreMessage * pmsg)
+//{
+//}
+//
 /*
  *******************************************************************************
  *  Inline functions                                                           *

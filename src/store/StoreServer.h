@@ -27,6 +27,14 @@
 #include "stdinclude.h"
 #include "memberlist.h"
 #include "StoreMessage.h"
+#include "StoreMsgFact.h"
+#include "StoreHandler.h"
+
+#include "KVStore.h"
+#include "KVStoreAccess.h"
+
+#include "Connection.h"
+#include "ConnectionManager.h"
 
 /*
  *******************************************************************************
@@ -48,9 +56,12 @@ public:
  
    void run();
 
-   void do_receive();
+   //void do_receive();
  
-   void do_send(StoreMessage * pmsg);
+   //void do_send(StoreMessage * pmsg);
+
+protected:
+   void start_accept();
 
 private:
    bool           m_done;
@@ -68,6 +79,19 @@ private:
 
    // Acceptor used to listen for incoming connections.
    boost::asio::ip::tcp::acceptor m_acceptor;
+
+   boost::asio::ip::tcp::socket   m_new_sock;
+
+   ConnectionManager              m_conn_mgr;
+
+   StoreMessageFactory            m_fact;
+
+   KVStore                        m_store;
+
+   KVStoreAsyncAccessor           m_store_acc;
+
+   StoreHandler                   m_handler;
+   //Connection_ptr                 m_new_connection;
 };
 
 /*
