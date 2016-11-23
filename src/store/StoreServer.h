@@ -28,10 +28,9 @@
 #include "memberlist.h"
 #include "StoreMessage.h"
 #include "StoreMsgFact.h"
-#include "StoreHandler.h"
+#include "StoreMessageHandler.h"
 
-#include "KVStore.h"
-#include "KVStoreAccess.h"
+#include "StoreManager.h"
 
 #include "Connection.h"
 #include "ConnectionManager.h"
@@ -86,11 +85,9 @@ private:
 
    StoreMessageFactory            m_fact;
 
-   KVStore                        m_store;
+   StoreManager                   m_store;
 
-   KVStoreAsyncAccessor           m_store_acc;
-
-   StoreHandler                   m_handler;
+   StoreMessageHandler            m_handler;
    //Connection_ptr                 m_new_connection;
 };
 

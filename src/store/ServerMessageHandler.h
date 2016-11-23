@@ -1,14 +1,14 @@
 /**
  *******************************************************************************
- * StoreHandler.h                                                              *
+ * ServerMessageHandler.h                                                      *
  *                                                                             *
- * Store handler:                                                              *
- *   - Perform CRUD operations                                                 *
+ * Server message handler:                                                     *
+ *   - Handle CRUD request from server                                         *
  *******************************************************************************
  */
 
-#ifndef _STORE_HANDLER_H_
-#define _STORE_HANDLER_H_
+#ifndef _SERVER_REQUEST_HANDLER_H_
+#define _SERVER_REQUEST_HANDLER_H_
 
 /*
  *******************************************************************************
@@ -17,10 +17,7 @@
  */
 #include "stdinclude.h"
 #include "StoreMessage.h"
-#include "ClientRequestHandler.h"
-#include "ServerRequestHandler.h"
-
-#include "KVStoreAccess.h"
+#include "StoreMessageHandler.h"
 
 #include <boost/asio.hpp>
 
@@ -29,8 +26,6 @@
  *  Forward declaraction                                                       *
  *******************************************************************************
  */
-// Do not include ConnectionManager.h !
-class ConnectionManager;
 
 /*
  *******************************************************************************
@@ -38,22 +33,28 @@ class ConnectionManager;
  *******************************************************************************
  */
 
-class StoreHandler {
+class ServerMessageHandler : public StoreMessageHandler {
 public:
-    StoreHandler(boost::asio::io_service & io,
-                 ConnectionManager& mgr,
-                 KVStoreAsyncAccessor& acc);
-    ~StoreHandler();
+    ServerMessageHandler(boost::asio::io_service& io,
+                         ConnectionManager& mgr,
+                         StoreManager & store,
+                         ConfigPortal * pcfg);
+    ~ServerMessageHandler();
 
-    int handle_message(StoreMessage* pmsg);
+protected:
+    virtual int handle_create_request(CreatRequestMessage* pmsg);
+    virtual int handle_create_response(CreatResponseMessage* pmsg);
+
+    virtual int handle_read_request(ReadRequestMessage* pmsg);
+    virtual int handle_read_response(ReadResponseMessage* pmsg);
+
+    virtual int handle_update_request(UpdateRequestMessage* pmsg);
+    virtual int handle_update_response(UpdateResponseMessage* pmsg);
+
+    virtual int handle_delete_request(DeleteRequestMessage* pmsg);
+    virtual int handle_delete_response(DeleteResponseMessage* pmsg);
+
 private:
-    int handle_client_message(StoreMessage* pmsg);
-    int handle_server_message(StoreMessage* pmsg);
-private:
-    ConnectionManager&     m_mgr;
-    KVStoreAsyncAccessor&  m_acc;
-    ClientRequestHandler   m_client_handler;
-    ServerRequestHandler   m_server_handler;
 };
 
 /*
@@ -62,5 +63,5 @@ private:
  *******************************************************************************
  */
 
-#endif // _STORE_HANDLER_H_
+#endif // _SERVER_REQUEST_HANDLER_H_
 

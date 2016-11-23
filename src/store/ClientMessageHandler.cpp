@@ -1,9 +1,9 @@
 /**
  *******************************************************************************
- * ServerRequestHandler.cpp                                                    *
+ * ClientMessageHandler.cpp                                                    *
  *                                                                             *
- * Server request handler                                                      *
- *   - Perform CRUD request from server                                        *
+ * Client message handler                                                      *
+ *   - Perform CRUD request from client                                        *
  *******************************************************************************
  */
 
@@ -20,7 +20,7 @@
 #include "UpdateMessage.h"
 #include "DeleteMessage.h"
 
-#include "ServerRequestHandler.h"
+#include "ClientMessageHandler.h"
 #include "ConnectionManager.h"
 
 #include <boost/asio.hpp>
@@ -39,53 +39,57 @@ using namespace boost::asio;
  *******************************************************************************
  */
 
-ServerRequestHandler::ServerRequestHandler(io_service & io,
-                                           ConnectionManager& mgr) :
-   StoreRequestHandler(io, mgr)
+ClientMessageHandler::ClientMessageHandler(io_service & io,
+                                           ConnectionManager& mgr,
+                                           StoreManager& store,
+                                           ConfigPortal * pcfg) :
+   StoreMessageHandler(io, mgr, store, pcfg)
 {
 }
 
-ServerRequestHandler::~ServerRequestHandler()
+ClientMessageHandler::~ClientMessageHandler()
 {
 }
 
+int ClientMessageHandler::handle_create_request(CreatRequestMessage* pmsg)
+{
+    // Find who is in charge of the key, and then send server request message to
+    // these nodes.
 
-int ServerRequestHandler::handle_create_request(CreatRequestMessage* pmsg)
+    return 0;
+}
+
+int ClientMessageHandler::handle_create_response(CreatResponseMessage* pmsg)
 {
     return 0;
 }
 
-int ServerRequestHandler::handle_create_response(CreatResponseMessage* pmsg)
+int ClientMessageHandler::handle_read_request(ReadRequestMessage* pmsg)
 {
     return 0;
 }
 
-int ServerRequestHandler::handle_read_request(ReadRequestMessage* pmsg)
+int ClientMessageHandler::handle_read_response(ReadResponseMessage* pmsg)
 {
     return 0;
 }
 
-int ServerRequestHandler::handle_read_response(ReadResponseMessage* pmsg)
+int ClientMessageHandler::handle_update_request(UpdateRequestMessage* pmsg)
 {
     return 0;
 }
 
-int ServerRequestHandler::handle_update_request(UpdateRequestMessage* pmsg)
+int ClientMessageHandler::handle_update_response(UpdateResponseMessage* pmsg)
 {
     return 0;
 }
 
-int ServerRequestHandler::handle_update_response(UpdateResponseMessage* pmsg)
+int ClientMessageHandler::handle_delete_request(DeleteRequestMessage* pmsg)
 {
     return 0;
 }
 
-int ServerRequestHandler::handle_delete_request(DeleteRequestMessage* pmsg)
-{
-    return 0;
-}
-
-int ServerRequestHandler::handle_delete_response(DeleteResponseMessage* pmsg)
+int ClientMessageHandler::handle_delete_response(DeleteResponseMessage* pmsg)
 {
     return 0;
 }

@@ -23,7 +23,7 @@
 #include "stdinclude.h"
 #include "StoreMessage.h"
 #include "StoreMsgFact.h"
-#include "StoreHandler.h"
+#include "StoreMessageHandler.h"
 
 #define MAX_RCV_BUF_LEN      8196
 
@@ -47,8 +47,8 @@ public:
 
     explicit Connection(boost::asio::ip::tcp::socket sock,
                         boost::asio::io_service & io,
-                        ConnectionManager & manager,
-                        StoreHandler& handler,
+                        ConnectionManager & conn_mgr,
+                        StoreMessageHandler& handler,
                         StoreMessageFactory& fact);
 
     void start();
@@ -69,13 +69,15 @@ private:
 
     boost::asio::ip::tcp::socket    m_socket;
 
-    ConnectionManager &             m_manager;
+    ConnectionManager &             m_conn_mgr;
 
-    StoreHandler &                  m_handler;
+    StoreMessageHandler &           m_handler;
 
     StoreMessageFactory &           m_fact;
 
     std::array<unsigned char, MAX_RCV_BUF_LEN > m_buffer;
+
+    std::vector<unsigned char>      m_rcv_buf;
 };
 
 typedef std::shared_ptr< Connection > Connection_ptr;

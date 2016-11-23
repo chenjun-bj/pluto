@@ -22,6 +22,7 @@
 
 #include <boost/asio.hpp>
 #include "Connection.h"
+#include "ConnectionManager.h"
 
 using namespace boost::asio;
 using namespace std;
@@ -40,15 +41,16 @@ using namespace std;
 
 Connection::Connection(ip::tcp::socket sock,
                        io_service& io, 
-                       ConnectionManager& manager,
-                       StoreHandler& handler,
+                       ConnectionManager& conn_mgr,
+                       StoreMessageHandler& handler,
                        StoreMessageFactory & fact) :
    m_strand(io),
    m_socket(io),
-   m_manager(manager),
+   m_conn_mgr(conn_mgr),
    m_handler(handler),
    m_fact(fact),
-   m_buffer()
+   m_buffer(),
+   m_rcv_buf()
 {
 
 }
@@ -72,8 +74,9 @@ void Connection::do_read()
             if (!ec && bytes_transferred > 0) {
                 boost::tribool result;
                 StoreMessage * pmsg;
-
-                tie(result, pmsg) = m_fact.extract(m_buffer.data(), bytes_transferred);
+               
+                copy(m_buffer.begin(), m_buffer.end(), back_inserter(m_rcv_buf)); 
+                tie(result, pmsg) = m_fact.extract(m_rcv_buf.data(), m_rcv_buf.size());
                 if (result) {
                     pmsg->set_source(m_socket.remote_endpoint().address(),
                                      m_socket.remote_endpoint().port());
@@ -87,10 +90,13 @@ void Connection::do_read()
                     m_handler.handle_message(pmsg);
                 }
                 else if (!result) {
-                    // here we got error
+                    // here we got error, stop myself, connection manager will erase the pointer to myself
+                    // after that, no pointer pointed to this, it will be deleted
+                    m_conn_mgr.stop(self);
                 }
                 else {
                     // indeterminate state
+                    do_read();
                 }
             }
         }));

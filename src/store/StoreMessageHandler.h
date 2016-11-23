@@ -1,14 +1,14 @@
 /**
  *******************************************************************************
- * ClientRequestHandler.h                                                      *
+ * StoreMessageHandler.h                                                       *
  *                                                                             *
- * Client request handler:                                                     *
- *   - Handle CRUD request from client                                         *
+ * Store message handler:                                                      *
+ *   - CRUD handle commons                                                     *
  *******************************************************************************
  */
 
-#ifndef _CLIENT_REQUEST_HANDLER_H_
-#define _CLIENT_REQUEST_HANDLER_H_
+#ifndef _STORE_MESSAGE_HANDLER_H_
+#define _STORE_MESSAGE_HANDLER_H_
 
 /*
  *******************************************************************************
@@ -17,8 +17,10 @@
  */
 #include "stdinclude.h"
 #include "StoreMessage.h"
-#include "StoreRequestHandler.h"
+#include "StoreManager.h"
 
+#include <string>
+#include <vector>
 #include <boost/asio.hpp>
 
 /*
@@ -27,18 +29,28 @@
  *******************************************************************************
  */
 
+class ConnectionManager;
+
 /*
  *******************************************************************************
  *  Class declaraction                                                         *
  *******************************************************************************
  */
 
-class ClientRequestHandler : public StoreRequestHandler {
+class StoreMessageHandler {
 public:
-    ClientRequestHandler(boost::asio::io_service& io,
-                         ConnectionManager& mgr);
-    ~ClientRequestHandler();
+    StoreMessageHandler(boost::asio::io_service& io, 
+                        ConnectionManager& conn_mgr,
+                        StoreManager & store,
+                        ConfigPortal * pcfg,
+                        bool creat_child = false);
+    virtual ~StoreMessageHandler();
 
+    virtual int handle_message(StoreMessage* pmsg);
+
+    std::vector< struct MemberEntry > find_nodes(const std::string& key);
+protected:
+    bool is_self(const struct MemberEntry& e);
 protected:
     virtual int handle_create_request(CreatRequestMessage* pmsg);
     virtual int handle_create_response(CreatResponseMessage* pmsg);
@@ -52,7 +64,20 @@ protected:
     virtual int handle_delete_request(DeleteRequestMessage* pmsg);
     virtual int handle_delete_response(DeleteResponseMessage* pmsg);
 
+protected:
+    ConnectionManager&    m_conn_mgr;
+    StoreManager &        m_store;
 private:
+    StoreMessageHandler * m_phdler_client;
+    StoreMessageHandler * m_phdler_server;
+
+    ConfigPortal        * m_pconfig;
+
+    // self address                                                                      
+    boost::asio::ip::address m_self_addr;                                                
+    int            m_self_af;                                                            
+    unsigned char  m_self_rawip[PL_IPv6_ADDR_LEN];                                       
+    unsigned short m_self_port; 
 };
 
 /*
@@ -61,5 +86,5 @@ private:
  *******************************************************************************
  */
 
-#endif // _CLIENT_REQUEST_HANDLER_H_
+#endif // _STORE_REQUEST_HANDLER_H_
 

@@ -1,14 +1,14 @@
 /**
  *******************************************************************************
- * ServerRequestHandler.h                                                      *
+ * ClientMessageHandler.h                                                      *
  *                                                                             *
- * Server request handler:                                                     *
- *   - Handle CRUD request from server                                         *
+ * Client message handler:                                                     *
+ *   - Handle CRUD request from client                                         *
  *******************************************************************************
  */
 
-#ifndef _SERVER_REQUEST_HANDLER_H_
-#define _SERVER_REQUEST_HANDLER_H_
+#ifndef _CLIENT_MESSAGE_HANDLER_H_
+#define _CLIENT_MESSAGE_HANDLER_H_
 
 /*
  *******************************************************************************
@@ -17,7 +17,7 @@
  */
 #include "stdinclude.h"
 #include "StoreMessage.h"
-#include "StoreRequestHandler.h"
+#include "StoreMessageHandler.h"
 
 #include <boost/asio.hpp>
 
@@ -33,11 +33,13 @@
  *******************************************************************************
  */
 
-class ServerRequestHandler : public StoreRequestHandler {
+class ClientMessageHandler : public StoreMessageHandler {
 public:
-    ServerRequestHandler(boost::asio::io_service& io,
-                         ConnectionManager& mgr);
-    ~ServerRequestHandler();
+    ClientMessageHandler(boost::asio::io_service& io,
+                         ConnectionManager& mgr,
+                         StoreManager & store,
+                         ConfigPortal * pcfg);
+    ~ClientMessageHandler();
 
 protected:
     virtual int handle_create_request(CreatRequestMessage* pmsg);
@@ -61,5 +63,5 @@ private:
  *******************************************************************************
  */
 
-#endif // _SERVER_REQUEST_HANDLER_H_
+#endif // _CLIENT_REQUEST_HANDLER_H_
 

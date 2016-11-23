@@ -51,9 +51,8 @@ StoreServer::StoreServer(ConfigPortal * pcfg,
    m_new_sock(m_io),
    m_conn_mgr(m_io),
    m_fact(),
-   m_store(),
-   m_store_acc(m_io, m_store),
-   m_handler(m_io, m_conn_mgr, m_store_acc)
+   m_store(m_io, pmemlist, pcfg),
+   m_handler(m_io, m_conn_mgr, m_store, pcfg, true)
 {
 
     m_signals.add(SIGINT);
@@ -104,7 +103,6 @@ void StoreServer::run()
 
 void StoreServer::start_accept()
 {
-    //m_new_connection.reset(new Connection(m_io, m_handler));
     m_acceptor.async_accept(m_new_sock,
                             [this](const boost::system::error_code & ec) {
                                 if (!m_acceptor.is_open()) {

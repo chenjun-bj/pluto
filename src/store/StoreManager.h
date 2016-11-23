@@ -1,14 +1,14 @@
 /**
  *******************************************************************************
- * StoreRequestHandler.h                                                       *
+ * StoreManager.h                                                              *
  *                                                                             *
- * Store request handler:                                                      *
- *   - CRUD handle commons                                                     *
+ * Store Manager:                                                              *
+ *   - Perform CRUD operations                                                 *
  *******************************************************************************
  */
 
-#ifndef _STORE_REQUEST_HANDLER_H_
-#define _STORE_REQUEST_HANDLER_H_
+#ifndef _STORE_MANAGER_H_
+#define _STORE_MANAGER_H_
 
 /*
  *******************************************************************************
@@ -16,7 +16,12 @@
  *******************************************************************************
  */
 #include "stdinclude.h"
-#include "StoreMessage.h"
+#include "KVStore.h"
+#include "KVStoreAccess.h"
+#include "MemberList.h"
+
+#include <string>
+#include <vector>
 
 #include <boost/asio.hpp>
 
@@ -26,37 +31,36 @@
  *******************************************************************************
  */
 
-class ConnectionManager;
-
 /*
  *******************************************************************************
  *  Class declaraction                                                         *
  *******************************************************************************
  */
 
-class StoreRequestHandler {
+class StoreManager {
 public:
-    StoreRequestHandler(boost::asio::io_service& io, 
-                        ConnectionManager& mgr);
-    virtual ~StoreRequestHandler();
+    StoreManager(boost::asio::io_service & io,
+                 MemberList * pmemlst,
+                 ConfigPortal * pcfg);
+    ~StoreManager();
 
-    virtual int handle_message(StoreMessage* pmsg);
+    std::vector<struct MemberEntry > get_nodes(const std::string& key );
 
-protected:
-    virtual int handle_create_request(CreatRequestMessage* pmsg) = 0;
-    virtual int handle_create_response(CreatResponseMessage* pmsg) = 0;
-
-    virtual int handle_read_request(ReadRequestMessage* pmsg) = 0;
-    virtual int handle_read_response(ReadResponseMessage* pmsg) = 0;
-
-    virtual int handle_update_request(UpdateRequestMessage* pmsg) = 0;
-    virtual int handle_update_response(UpdateResponseMessage* pmsg) = 0;
-
-    virtual int handle_delete_request(DeleteRequestMessage* pmsg) = 0;
-    virtual int handle_delete_response(DeleteResponseMessage* pmsg) = 0;
-
+    int store_read(const std::string& key, int replica_type,
+                   unsigned char* value, size_t & sz);
+    int store_create(const std::string& key, int replica_type,
+                    const unsigned char* value, 
+                    const size_t & sz);
+    int store_update(const std::string& key, int replica_type,
+                     const unsigned char* value, 
+                     const size_t & sz);
+    int store_delete(const std::string& key, int replica_type);
 private:
-
+private:
+    KVStore               m_store;
+    KVStoreAsyncAccessor  m_store_acc;
+    MemberList   *        m_pmember;
+    ConfigPortal *        m_pconfig;
 };
 
 /*
@@ -65,5 +69,5 @@ private:
  *******************************************************************************
  */
 
-#endif // _STORE_REQUEST_HANDLER_H_
+#endif // _STORE_MANAGER_H_
 
