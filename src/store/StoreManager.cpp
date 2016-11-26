@@ -18,6 +18,8 @@
 
 #include <string>
 #include <functional>
+#include <algorithm>
+#include <iterator>
 #include <vector>
 
 #include <boost/asio.hpp>
@@ -43,7 +45,8 @@ StoreManager::StoreManager(io_service & io,
    m_store(),
    m_store_acc(io, m_store),
    m_pmember(pmemlst),
-   m_pconfig(pcfg)
+   m_pconfig(pcfg),
+   m_ring()
 {
 }
 
@@ -51,63 +54,128 @@ StoreManager::~StoreManager()
 {
 }
 
-vector<struct MemberEntry > StoreManager :: get_nodes(const string& key)
+void StoreManager :: update_ring()
 {
     // TODO: MemberList is updated by Membership protocol (another process)
     //       so the access should be protected by a lock
 
+    std::vector< MemberEntry > cur_memlist;
+
+    // !!! TODO: LOCK member list !!! 
+    std::copy(m_pmember->begin(), m_pmember->end(), std::back_inserter( cur_memlist));
+    // !!! UNLOCK here !!!
+
+    bool change = false;
+    // TODO: lock ring !!!
+    if (cur_memlist.size() != m_ring.size()) {
+        change = true;
+    }
+    else {
+        for (int i=0; i<cur_memlist.size(); i++) {
+            if (cur_memlist[i] != m_ring[i]) {
+                change=true;
+                break;
+            }
+        }
+    }
+
+    if (change) {
+        m_ring.swap(cur_memlist);
+        // run stablization protocol
+        stabilization_protocol();
+    }
+}
+
+vector<struct MemberEntry > StoreManager :: get_nodes(const string& key)
+{
     vector<struct MemberEntry > v;
 
     std::hash<string> hashfunc;
     size_t hash_code = hashfunc(key);
-   
+  
+    if (m_ring.size() == 0) return v;
+ 
     size_t pos = hash_code % m_pconfig->get_ringsize();
 
     // !!! TODO: LOCK !!!   
-    size_t node_cnt = m_pmember->size();
+    size_t node_cnt = m_ring.size();
     if (node_cnt >= PLUTO_NODE_REPLICAS_NUM) {
         int i = 0;
-        if (pos > (*m_pmember)[node_cnt-1].hashcode % m_pconfig->get_ringsize()) {
+        if (pos > m_ring[node_cnt-1].hashcode % m_pconfig->get_ringsize()) {
             i = 0;
         } else {
             for (i=0; i<node_cnt; i++) {
-                const MemberEntry & e = (*m_pmember)[i];
-                if (pos <= e.hashcode % m_pconfig->get_ringsize()) {
+                if (pos <= m_ring[i].hashcode % m_pconfig->get_ringsize()) {
                     // push back
                     break;
                 }
             }
         }
         for (; v.size()<PLUTO_NODE_REPLICAS_NUM; i++) {
-            v.push_back((*m_pmember)[i%m_pconfig->get_ringsize()]);
+            v.push_back(m_ring[i%node_cnt]);
         }
     }
   
     return v;
 }
 
-int StoreManager::store_read(const std::string& key, int replica_type,
-                             unsigned char* value, size_t & sz)
+template<typename RD_HANDLER >
+void StoreManager::async_read(const std::string& key, int replica_type,
+                              RD_HANDLER handler)
 {
-    return 0;
+    m_store_acc.async_read(key, replica_type, handler);
 }
 
-int StoreManager::store_create(const std::string& key, int replica_type,
-                               const unsigned char* value, 
-                               const size_t & sz)
+template<typename WR_HANDLER > 
+void StoreManager::async_creat(const std::string& key, int replica_type,
+                               const unsigned char* value, const size_t sz,
+                               WR_HANDLER handler)
 {
-    return 0;
+    m_store_acc.async_write(key, replica_type, value, sz, handler);
 }
 
-int StoreManager::store_update(const std::string& key, int replica_type,
-                               const unsigned char* value, 
-                               const size_t & sz)
+template<typename UP_HANDLER > 
+void StoreManager::async_update(const std::string& key, int replica_type,
+                                const unsigned char* value, const size_t sz,
+                                UP_HANDLER handler)
 {
-    return 0;
+    m_store_acc.async_update(key, replica_type, value, sz, handler);
 }
 
-int StoreManager::store_delete(const std::string& key, int replica_type)
+template<typename DEL_HANDLER > 
+void StoreManager::async_delete(const std::string& key, int replica_type,
+                                DEL_HANDLER handler)
 {
-    return 0;
+    m_store_acc.async_delete(key, replica_type, handler);
+}
+
+void StoreManager::stabilization_protocol()
+{
+}
+
+// Synchronous operation is NOT supported
+int StoreManager::sync_read(const std::string& key, int replica_type,
+                            unsigned char* value, size_t & sz)
+{
+    return PLERROR;
+}
+
+int StoreManager::sync_create(const std::string& key, int replica_type,
+                              const unsigned char* value, 
+                              const size_t & sz)
+{
+    return PLERROR;
+}
+
+int StoreManager::sync_update(const std::string& key, int replica_type,
+                              const unsigned char* value, 
+                              const size_t & sz)
+{
+    return PLERROR;
+}
+
+int StoreManager::sync_delete(const std::string& key, int replica_type)
+{
+    return PLERROR;
 }
 

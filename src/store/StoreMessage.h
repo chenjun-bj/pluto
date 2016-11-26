@@ -29,6 +29,13 @@
 
 /**
  *******************************************************************************
+ * Forward declaraction                                                        *
+ *******************************************************************************
+ */
+class Connection;
+
+/**
+ *******************************************************************************
  * Class declaraction                                                          *
  *******************************************************************************
  */
@@ -55,7 +62,8 @@ public:
         Message(buf, sz, managebuf), 
         m_txid(-1),
         m_replica_type(-1),
-        m_originator(MessageOriginator::Client) {
+        m_originator(MessageOriginator::Client),
+        m_pconn(nullptr) {
     };
   
     StoreMessage(MsgType type, 
@@ -66,7 +74,8 @@ public:
        Message(type, version, magic), 
        m_txid(txid),
        m_replica_type(-1),
-       m_originator(originator)
+       m_originator(originator),
+       m_pconn(nullptr)
     {
     }
 
@@ -99,6 +108,14 @@ public:
 
     int32 get_replica_type() const {
         return m_replica_type;
+    }
+
+    void set_connection(Connection* pconn) {
+        m_pconn = pconn;
+    }
+
+    Connection* get_connection() const {
+        return m_pconn;
     }
 
     int build_msg_body(unsigned char* buf, size_t sz) {
@@ -220,6 +237,7 @@ private:
     int64               m_txid;
     int32               m_replica_type;
     MessageOriginator   m_originator;
+    Connection *        m_pconn;
 };
 
 /**

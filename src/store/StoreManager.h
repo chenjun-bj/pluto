@@ -44,23 +44,47 @@ public:
                  ConfigPortal * pcfg);
     ~StoreManager();
 
+    void update_ring();
+
     std::vector<struct MemberEntry > get_nodes(const std::string& key );
 
-    int store_read(const std::string& key, int replica_type,
-                   unsigned char* value, size_t & sz);
-    int store_create(const std::string& key, int replica_type,
+    template<typename RD_HANDLER > 
+    void async_read(const std::string& key, int replica_type,
+                    RD_HANDLER handler);
+
+    template<typename WR_HANDLER > 
+    void async_creat(const std::string& key, int replica_type,
+                     const unsigned char* value, const size_t sz,
+                     WR_HANDLER handler);
+
+    template<typename UP_HANDLER > 
+    void async_update(const std::string& key, int replica_type,
+                      const unsigned char* value, const size_t sz,
+                      UP_HANDLER handler);
+
+    template<typename DEL_HANDLER > 
+    void async_delete(const std::string& key, int replica_type,
+                      DEL_HANDLER handler);
+
+    // Synchronous operations, which is NOT supported
+    int sync_read(const std::string& key, int replica_type,
+                  unsigned char* value, size_t & sz);
+    int sync_create(const std::string& key, int replica_type,
                     const unsigned char* value, 
                     const size_t & sz);
-    int store_update(const std::string& key, int replica_type,
-                     const unsigned char* value, 
-                     const size_t & sz);
-    int store_delete(const std::string& key, int replica_type);
+    int sync_update(const std::string& key, int replica_type,
+                    const unsigned char* value, 
+                    const size_t & sz);
+    int sync_delete(const std::string& key, int replica_type);
 private:
+    void stabilization_protocol();
 private:
     KVStore               m_store;
     KVStoreAsyncAccessor  m_store_acc;
     MemberList   *        m_pmember;
     ConfigPortal *        m_pconfig;
+
+    std::vector<MemberEntry > m_ring;
 };
 
 /*

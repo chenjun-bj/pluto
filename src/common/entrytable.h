@@ -205,5 +205,20 @@ inline bool entry_equal(const struct MemberEntry& l, const struct MemberEntry& r
     return (!entry_less(l, r) && !entry_less(r, l));
 }
 
+inline bool operator<(const struct MemberEntry& l, const struct MemberEntry& r)
+{
+    return entry_less(l, r);
+}
+
+inline bool operator==(const struct MemberEntry& l, const struct MemberEntry& r)
+{
+    return entry_equal(l, r);
+}
+
+inline bool operator!=(const struct MemberEntry& l, const struct MemberEntry& r)
+{
+    return !(l==r);
+}
+
 #endif // _MEMBER_ENTRY_TAB_H_
 

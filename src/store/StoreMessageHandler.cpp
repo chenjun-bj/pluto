@@ -223,4 +223,4 @@ int StoreMessageHandler::handle_delete_response(DeleteResponseMessage* pmsg)
     return PLERROR;
 }
 
-
+/* eof */

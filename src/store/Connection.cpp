@@ -67,15 +67,19 @@ void Connection::stop()
 
 void Connection::do_read()
 {
+    // Perform async read, which different Connection may run in different thread
+    // although it is called in ConnectionManager thread
+    // The strand is protected concurrent request on the socket, such as read and close
+
     auto self(shared_from_this());
     m_socket.async_read_some(buffer(m_buffer), m_strand.wrap(
-        [this, self](boost::system::error_code ec, size_t bytes_transferred) 
+        [this, self](boost::system::error_code ec, size_t bytes_read) 
         {
-            if (!ec && bytes_transferred > 0) {
+            if (!ec && bytes_read > 0) {
                 boost::tribool result;
                 StoreMessage * pmsg;
                
-                copy(m_buffer.begin(), m_buffer.end(), back_inserter(m_rcv_buf)); 
+                copy(m_buffer.data(), m_buffer.data()+bytes_read, back_inserter(m_rcv_buf)); 
                 tie(result, pmsg) = m_fact.extract(m_rcv_buf.data(), m_rcv_buf.size());
                 if (result) {
                     pmsg->set_source(m_socket.remote_endpoint().address(),

@@ -18,7 +18,9 @@
 #include "stdinclude.h"
 #include "StoreMessage.h"
 #include "StoreMessageHandler.h"
+//#include "Connection.h"
 
+#include <map>
 #include <boost/asio.hpp>
 
 /*

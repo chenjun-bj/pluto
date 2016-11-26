@@ -132,6 +132,7 @@ void MembershipServer::do_receive()
             size_t size;
             boost::tribool result;
             Message * pmsg;
+            // TODO: should append read data into buffer
             unsigned char* data = get_buffer(m_sender, size);
             if (data!=nullptr) {
                 std::tie(result, pmsg) = m_fact.extract(data, size);
