@@ -57,10 +57,40 @@ void ConnectionManager::start(Connection_ptr conn)
  
 void ConnectionManager::stop(Connection_ptr conn)
 {
+    m_strand.post([this, conn](){
+                     conn->stop();
+                     m_conn_map.erase(conn->socket().remote_endpoint());
+                  });
 }
 
 void ConnectionManager::stop_all()
 {
+    m_strand.post([this](){
+                     for (auto&& conn : m_conn_map) { 
+                         conn.second->stop();
+                     }
+                     m_conn_map.clear();
+                  });
+}
+
+void ConnectionManager::send_message(const boost::asio::ip::tcp::endpoint& endpoint, 
+                                     StoreMessage * pmsg,
+                                     bool del_msg)
+{
+    m_strand.post([this, endpoint, pmsg, del_msg]() {
+                      CM_MAP::iterator it = m_conn_map.find(endpoint);
+                      if (it != m_conn_map.end()) {
+                          Connection * conn = it->second.get();
+                          if (conn) {
+                              conn->do_write(pmsg, del_msg);
+                              return;
+                          }
+                      }
+                      // The message is not sent
+                      if (del_msg) {
+                          delete pmsg;
+                      }
+                  });
 }
 
 /*

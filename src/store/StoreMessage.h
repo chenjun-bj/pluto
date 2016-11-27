@@ -16,6 +16,7 @@
  */
 #include <string>
 #include <stdexcept>
+#include <memory>
 
 #include "stdinclude.h"
 #include "messages.h"
@@ -80,6 +81,7 @@ public:
     }
 
     virtual ~StoreMessage() {
+        m_pconn.reset();
     }
 
     void set_originator(MessageOriginator originator) {
@@ -110,12 +112,17 @@ public:
         return m_replica_type;
     }
 
-    void set_connection(Connection* pconn) {
+    void set_connection(std::shared_ptr<Connection > pconn) {
         m_pconn = pconn;
     }
 
-    Connection* get_connection() const {
+    std::shared_ptr<Connection > get_connection() const {
         return m_pconn;
+    }
+
+    boost::asio::ip::tcp::endpoint get_dest_endpoint() const {
+        std::pair<boost::asio::ip::address, unsigned short> addr = get_destination();
+        return boost::asio::ip::tcp::endpoint(addr.first, addr.second);
     }
 
     int build_msg_body(unsigned char* buf, size_t sz) {
@@ -237,7 +244,7 @@ private:
     int64               m_txid;
     int32               m_replica_type;
     MessageOriginator   m_originator;
-    Connection *        m_pconn;
+    std::shared_ptr<Connection > m_pconn;
 };
 
 /**

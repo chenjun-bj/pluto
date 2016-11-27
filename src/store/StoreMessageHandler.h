@@ -51,6 +51,13 @@ public:
     std::vector< struct MemberEntry > find_nodes(const std::string& key);
 protected:
     bool is_self(const struct MemberEntry& e);
+
+    void set_resp_info_from_req(StoreMessage* presp, const StoreMessage * preq);
+
+    void send_message(const boost::asio::ip::tcp::endpoint & endpoint,
+                      StoreMessage * pmsg);
+    // Send messages to endpoint indicated by message
+    void send_message(StoreMessage * pmsg);
 protected:
     virtual int handle_create_request(CreatRequestMessage* pmsg);
     virtual int handle_create_response(CreatResponseMessage* pmsg);

@@ -175,6 +175,41 @@ bool StoreMessageHandler::is_self(const struct MemberEntry& e)
     
 }
 
+void StoreMessageHandler::set_resp_info_from_req(StoreMessage* presp, const StoreMessage * preq)
+{
+    if ((presp==nullptr) || (preq==nullptr)) {
+        return;
+    }
+    presp->set_replica_type(preq->get_replica_type());
+    presp->set_connection(preq->get_connection());
+    std::pair<boost::asio::ip::address, unsigned short> srcaddr = preq->get_source();
+    presp->set_destination(srcaddr.first, srcaddr.second);
+}
+
+void StoreMessageHandler::send_message(const boost::asio::ip::tcp::endpoint& endpoint,
+                                       StoreMessage* pmsg)
+{
+    if (pmsg==nullptr) {
+        getlog()->sendlog(LogLevel::ERROR, "Error, send null message\n");
+        return ;
+    }
+    m_conn_mgr.send_message(endpoint, pmsg);
+}
+
+void StoreMessageHandler::send_message(StoreMessage* pmsg)
+{
+    if (pmsg==nullptr) {
+        getlog()->sendlog(LogLevel::ERROR, "Error, send null message\n");
+        return ;
+    }
+    if (pmsg->get_connection().get() != nullptr) {
+        pmsg->get_connection().get()->do_write(pmsg);
+    }
+    else {
+        send_message(pmsg->get_dest_endpoint(), pmsg);
+    }
+}
+
 int StoreMessageHandler::handle_create_request(CreatRequestMessage* pmsg)
 {
     getlog()->sendlog(LogLevel::FATAL, "Fatal error, store message handler got called\n");

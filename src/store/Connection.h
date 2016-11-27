@@ -59,7 +59,7 @@ public:
         return m_socket;
     }
 
-    void do_write(StoreMessage * pmsg);
+    void do_write(StoreMessage * pmsg, bool del_msg=true);
 
 protected:
     void do_read();

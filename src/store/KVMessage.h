@@ -69,7 +69,11 @@ public:
         }
     }
 
-    int get_value(unsigned char* val, size_t & sz) {
+    size_t get_value_length() const {
+        return m_value.size();
+    }
+
+    int get_value(unsigned char* val, size_t & sz) const {
         if (val==nullptr) return -1;
         if (sz < m_value.size()) return -1;
         sz = m_value.size();

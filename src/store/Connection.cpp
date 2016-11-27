@@ -62,6 +62,7 @@ void Connection::start()
 
 void Connection::stop()
 {
+    // TODO: close is not dispatched by strand, is it valid???
     m_socket.close();
 }
 
@@ -84,6 +85,8 @@ void Connection::do_read()
                 if (result) {
                     pmsg->set_source(m_socket.remote_endpoint().address(),
                                      m_socket.remote_endpoint().port());
+                    // TODO: pmsg holds pointer to connection, be carefully for error handling
+                    pmsg->set_connection(self);
 
                     getlog()->sendlog(LogLevel::DEBUG, "Store recevied message begin:\n");
                     if (getlog()->is_level_allowed(LogLevel::DEBUG)) {
@@ -106,9 +109,26 @@ void Connection::do_read()
         }));
 }
 
-void Connection::do_write(StoreMessage * pmsg)
+void Connection::do_write(StoreMessage * pmsg, bool del_msg)
 {
     if (pmsg == nullptr) return;
+
+    auto self(shared_from_this());
+    boost::asio::async_write(m_socket, buffer(pmsg->get_raw(), pmsg->get_size()), m_strand.wrap(
+        [this, self, pmsg, del_msg](boost::system::error_code ec, size_t bytes_write) 
+        {
+            if (del_msg) {
+                delete pmsg;
+            }
+            if (ec) {
+                getlog()->sendlog(LogLevel::ERROR, "Connection '%s:%d' send failed, error=%s\n", 
+                                  m_socket.remote_endpoint().address().to_string().c_str(),
+                                  m_socket.remote_endpoint().port(),
+                                  
+                                  ec.message().c_str());
+                m_conn_mgr.stop(self);
+            }
+        }));
 }
 /*
  *******************************************************************************

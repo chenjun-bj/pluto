@@ -48,6 +48,9 @@ public:
 
     void stop_all();
 
+    void send_message(const boost::asio::ip::tcp::endpoint& endpoint, 
+                      StoreMessage * pmsg,
+                      bool del_msg=true);
 private:
     typedef std::map< boost::asio::ip::tcp::endpoint, Connection_ptr > 
             CM_MAP;
