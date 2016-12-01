@@ -184,6 +184,10 @@ long ConfigPortal::get_gossipb() const
     return m_ptree.get(CFG_JSON_PATH_GOSSIP_B, MEM_PROT_DEF_GOSSIP_B);
 }
 
+int ConfigPortal::get_quorum_num() const {
+    return PLUTO_NODE_REPLICAS_NUM / 2 + 1;
+}
+
 ConfigPortal* GetConfigPortal()
 {
     return ConfigPortal::get_config();

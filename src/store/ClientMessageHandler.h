@@ -40,7 +40,8 @@ public:
     ClientMessageHandler(boost::asio::io_service& io,
                          ConnectionManager& mgr,
                          StoreManager & store,
-                         ConfigPortal * pcfg);
+                         ConfigPortal * pcfg,
+                         StoreMessageHandler * psuper);
     ~ClientMessageHandler();
 
 protected:
@@ -57,6 +58,8 @@ protected:
     virtual int handle_delete_response(DeleteResponseMessage* pmsg);
 
 private:
+    StoreMessageHandler * m_super_hdlr;
+    boost::asio::io_service::strand  m_strand;
 };
 
 /*

@@ -77,6 +77,12 @@ public:
     std::string get_protocol() const;
     long get_gossipb() const;
 
+    int get_message_timeout() const {
+        return 2000; // 2 seconds
+    }
+
+    int get_quorum_num() const ;
+
     const std::string& get_config_filename() const {
         return m_cfg_fn;
     }

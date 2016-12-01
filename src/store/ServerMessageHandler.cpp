@@ -44,8 +44,10 @@ using namespace boost::asio;
 ServerMessageHandler::ServerMessageHandler(io_service & io,
                                            ConnectionManager& conn_mgr,
                                            StoreManager& store,
-                                           ConfigPortal * pcfg) :
-   StoreMessageHandler(io, conn_mgr, store, pcfg)
+                                           ConfigPortal * pcfg,
+                                           StoreMessageHandler * psuper) :
+   StoreMessageHandler(io, conn_mgr, store, pcfg),
+   m_psuper_hdlr(psuper)
 {
 }
 

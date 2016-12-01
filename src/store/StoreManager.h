@@ -22,6 +22,7 @@
 
 #include <string>
 #include <vector>
+#include <functional>
 
 #include <boost/asio.hpp>
 
@@ -46,7 +47,34 @@ public:
 
     void update_ring();
 
-    std::vector<struct MemberEntry > get_nodes(const std::string& key );
+    template<typename H >
+    void async_get_nodes(const std::string& key, H handler ) {
+        std::hash<std::string> hashfunc;
+        size_t hash_code = hashfunc(key);
+        m_ring_strand.post([this, hash_code, handler]() {
+                              std::vector< MemberEntry > v;
+                              if (m_ring.size() == 0) {
+                                  handler(v);
+                                  return;
+                              }
+                              size_t pos = hash_code % m_pconfig->get_ringsize();
+                              size_t node_cnt = m_ring.size();
+                              if (node_cnt >= PLUTO_NODE_REPLICAS_NUM) {
+                                  int i = 0;
+                                  if (pos > m_ring[node_cnt-1].hashcode % m_pconfig->get_ringsize()) {
+                                      i=0;
+                                  } else {
+                                      for (i=0; i<node_cnt; i++) {
+                                          if (pos <= m_ring[i].hashcode % m_pconfig->get_ringsize()) {
+                                              // push back
+                                              break;
+                                          }
+                                      }
+                                  }
+                              }
+                              handler(v);
+                           });
+    }
 
     template<typename RD_HANDLER > 
     void async_read(const std::string& key, int replica_type,
@@ -85,6 +113,7 @@ public:
                     const size_t & sz);
     int sync_delete(const std::string& key, int replica_type);
 private:
+    std::vector<struct MemberEntry > get_nodes(const std::string& key );
     void stabilization_protocol();
 private:
     KVStore               m_store;
