@@ -52,7 +52,8 @@ StoreServer::StoreServer(ConfigPortal * pcfg,
    m_conn_mgr(m_io),
    m_fact(),
    m_store(m_io, pmemlist, pcfg),
-   m_handler(m_io, m_conn_mgr, m_store, pcfg, true)
+   m_handler(m_io, m_conn_mgr, m_store, pcfg, true),
+   m_timer(m_io)
 {
 
     m_signals.add(SIGINT);
@@ -62,6 +63,9 @@ StoreServer::StoreServer(ConfigPortal * pcfg,
 #endif // defined(SIGQUIT)
     m_signals.async_wait([this](const boost::system::error_code ec, int signum) {
             m_done = true;
+
+            m_timer.cancel();
+
             m_acceptor.close();
             m_conn_mgr.stop_all();
 
@@ -82,6 +86,9 @@ StoreServer::StoreServer(ConfigPortal * pcfg,
     m_acceptor.listen();
 
     start_accept();
+
+    m_timer.expires_from_now(boost::posix_time::seconds(m_pcfg->get_membership_period()));
+    m_timer.async_wait(boost::bind(&StoreServer::handle_period_timer, this));
 }
  
 void StoreServer::run()
@@ -113,6 +120,17 @@ void StoreServer::start_accept()
                                 }
                                 start_accept();
                             });
+}
+
+void StoreServer::handle_period_timer()
+{
+    if (m_done) return;
+   
+    m_handler.handle_time_event();
+    m_store.update_ring();
+ 
+    m_timer.expires_from_now(boost::posix_time::seconds(m_pcfg->get_membership_period()));
+    m_timer.async_wait(boost::bind(&StoreServer::handle_period_timer, this));
 }
 
 //void StoreServer::do_receive()

@@ -62,6 +62,7 @@ public:
 protected:
    void start_accept();
 
+   void handle_period_timer();
 private:
    bool           m_done;
 
@@ -89,6 +90,8 @@ private:
 
    StoreMessageHandler            m_handler;
    //Connection_ptr                 m_new_connection;
+
+   boost::asio::deadline_timer    m_timer;
 };
 
 /*
