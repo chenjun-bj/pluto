@@ -47,7 +47,8 @@ StoreManager::StoreManager(io_service & io,
    m_pmember(pmemlst),
    m_pconfig(pcfg),
    m_ring(),
-   m_ring_strand(io)
+   m_ring_strand(io),
+   m_clnt_strand(io)
 {
 }
 

@@ -81,6 +81,10 @@ public:
         return 0;
     }
 
+    void get_value(std::vector<unsigned char> & val) const {
+        val = m_value;
+    }
+
     int build_storemsg_body(unsigned char* buf, size_t sz) {
         /**
          * Format:
@@ -373,6 +377,10 @@ public:
     virtual ~KeyRespMessage() {
     }
 
+    void set_value(const std::vector<unsigned char> & val) {
+        m_value = val;
+    }
+
     void set_value(const unsigned char* val, size_t sz) {
         m_value.clear();
         if (val && sz>0) {
@@ -388,6 +396,10 @@ public:
         sz = m_value.size();
         memcpy(val, m_value.data(), sz);
         return 0;
+    }
+
+    void get_value(std::vector<unsigned char> & val) const {
+        val = m_value;
     }
 
     void set_status(MsgStatus status) {

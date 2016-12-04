@@ -19,6 +19,7 @@
 #include "KVStore.h"
 #include "KVStoreAccess.h"
 #include "MemberList.h"
+#include "ClientTransaction.h"
 
 #include <string>
 #include <vector>
@@ -124,6 +125,7 @@ private:
     std::vector<MemberEntry > m_ring;
 
     boost::asio::io_service::strand m_ring_strand;
+    boost::asio::io_service::strand m_clnt_strand;
 };
 
 /*

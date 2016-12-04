@@ -125,6 +125,10 @@ public:
         return boost::asio::ip::tcp::endpoint(addr.first, addr.second);
     }
 
+    void set_dest_endpoint(const boost::asio::ip::tcp::endpoint& ep) {
+        set_destination(ep.address(), ep.port());
+    }
+
     int build_msg_body(unsigned char* buf, size_t sz) {
         // format: int64 -- txid
         //         int32 -- originator

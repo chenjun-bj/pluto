@@ -44,10 +44,8 @@ using namespace boost::asio;
 ServerMessageHandler::ServerMessageHandler(io_service & io,
                                            ConnectionManager& conn_mgr,
                                            StoreManager& store,
-                                           ConfigPortal * pcfg,
-                                           StoreMessageHandler * psuper) :
-   StoreMessageHandler(io, conn_mgr, store, pcfg),
-   m_psuper_hdlr(psuper)
+                                           ConfigPortal * pcfg) :
+   StoreMessageHandler(io, conn_mgr, store, pcfg)
 {
 }
 
@@ -89,8 +87,7 @@ int ServerMessageHandler::handle_create_request(CreatRequestMessage* pmsg)
 
 int ServerMessageHandler::handle_create_response(CreatResponseMessage* pmsg)
 {
-    // TODO: need get corresponding request from response's txid,
-    //       this may require global resource, lock/strand is needed
+    // TODO: suppose we will never reach this function
     return 0;
 }
 
