@@ -49,6 +49,12 @@ public:
     int do_update(const std::string& key, int replica_type, 
                   const std::vector<unsigned char> &v);
     int do_delete(const std::string& key, int replica_type);
+
+    int do_delete(int replica_type);
+    // Get all key values for specific replcias
+    int do_get(int replica_type, 
+               std::map<std::string, std::vector<unsigned char> >& v,
+               bool remove = false);
 private:
     typedef std::map<std::string, std::vector<unsigned char> > STORAGE_MAP;
     std::vector< STORAGE_MAP >  m_storage; 

@@ -65,7 +65,7 @@ StoreMessageHandler::StoreMessageHandler(io_service & io,
     string self_ip(m_pconfig->get_bindip());                                   
  
     m_self_port = m_pconfig->get_bindport();                                             
-    m_self_addr = ip::address::from_string(self_ip);                                     
+    m_self_addr = ip::address::from_string(self_ip);
 
     memset(m_self_rawip, '\0', PL_IPv6_ADDR_LEN); 
     if (m_self_addr.is_v6()) {                                                           

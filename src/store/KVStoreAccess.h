@@ -19,6 +19,7 @@
 
 #include "KVStore.h"
 
+#include <map>
 #include <vector>
 #include <string>
 
@@ -49,7 +50,7 @@ public:
     template<typename RD_HANDLER > 
     void async_read(const std::string& key, int replica_type,
                     RD_HANDLER handler) {
-        m_strand.post([&, this](){
+        m_strand.post([=](){
                           std::vector<unsigned char> v;
                           int rc = m_store.do_read(key, replica_type, v);
                           handler(rc, v.data(), v.size());
@@ -62,7 +63,7 @@ public:
                      WR_HANDLER handler)
     {
         // TODO: memory pointed by value must be exist when handler called
-        m_strand.post([&, this](){
+        m_strand.post([=](){
                           std::vector<unsigned char> v;
                           v.resize(sz);
                           memcpy(v.data(), value, sz);
@@ -75,7 +76,7 @@ public:
     void async_update(const std::string& key, int replica_type,
                       const unsigned char* value, const size_t sz,
                       UP_HANDLER handler) {
-        m_strand.post([&, this](){
+        m_strand.post([=](){
                           std::vector<unsigned char> v;
                           v.resize(sz);
                           memcpy(v.data(), value, sz);
@@ -87,10 +88,27 @@ public:
     template<typename DEL_HANDLER > 
     void async_delete(const std::string& key, int replica_type,
                       DEL_HANDLER handler) {
-        m_strand.post([&, this](){
+        m_strand.post([=](){
                           int rc = m_store.do_delete(key, replica_type);
                           handler(rc);
                       });
+    }
+
+    template<typename GET_HANDLER >
+    void async_get(int replica_type, bool remove, GET_HANDLER handler) {
+        m_strand.post([=]() {
+            std::map<std::string, std::vector<unsigned char> > v;
+            int rc = m_store.do_get(replica_type, v, remove);
+            handler(rc, v);
+        });
+    }
+
+    template<typename DEL_HANDLER >
+    void async_delete(int replica_type, DEL_HANDLER handler ) {
+        m_strand.post([=]() {
+            int rc = m_store.do_delete(replica_type);
+            handler(rc);
+        });
     }
 private:
     boost::asio::io_service::strand m_strand;

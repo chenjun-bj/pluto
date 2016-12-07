@@ -107,3 +107,37 @@ int KVStore::do_delete(const string& key, int replica_type)
 
     return 0;
 }
+
+int KVStore::do_delete(int replica_type)
+{
+    if (replica_type<0 || replica_type>PLUTO_NODE_REPLICAS_NUM) {
+        getlog()->sendlog(LogLevel::ERROR, "Store: invalid replica type '%d'\n", replica_type);
+        return -1;
+    }
+
+    STORAGE_MAP m = m_storage[replica_type];
+    m.clear();
+
+    return 0;
+}
+
+int KVStore::do_get(int replica_type,
+                    std::map<std::string, std::vector<unsigned char> > & v,
+                    bool remove)
+{
+    if (replica_type<0 || replica_type>PLUTO_NODE_REPLICAS_NUM) {
+        getlog()->sendlog(LogLevel::ERROR, "Store: invalid replica type '%d'\n", replica_type);
+        return -1;
+    }
+
+    STORAGE_MAP m = m_storage[replica_type];
+    v = m;
+    if (remove) {
+        m.clear();
+    }
+
+    return 0;
+}
+
+/* eof */
+

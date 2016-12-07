@@ -4,4 +4,5 @@ project : default-build debug ;
 build-project common ;
 build-project admin ;
 build-project membership ;
+build-project store ;
 

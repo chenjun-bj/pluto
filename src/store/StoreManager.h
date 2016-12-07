@@ -16,9 +16,10 @@
  *******************************************************************************
  */
 #include "stdinclude.h"
+#include "pladdress.h"
 #include "KVStore.h"
 #include "KVStoreAccess.h"
-#include "MemberList.h"
+#include "memberlist.h"
 #include "ClientTransaction.h"
 
 #include <string>
@@ -105,17 +106,34 @@ public:
 
     // Synchronous operations, which is NOT supported
     int sync_read(const std::string& key, int replica_type,
-                  unsigned char* value, size_t & sz);
+                  unsigned char* value, size_t & sz) {
+        return PLERROR;
+    }
     int sync_create(const std::string& key, int replica_type,
                     const unsigned char* value, 
-                    const size_t & sz);
+                    const size_t & sz) {
+        return PLERROR;
+    }
     int sync_update(const std::string& key, int replica_type,
                     const unsigned char* value, 
-                    const size_t & sz);
-    int sync_delete(const std::string& key, int replica_type);
+                    const size_t & sz) {
+        return PLERROR;
+    }
+    int sync_delete(const std::string& key, int replica_type) {
+        return PLERROR;
+    }
 private:
+    // Following functions are called by ring strand!!!
     std::vector<struct MemberEntry > get_nodes(const std::string& key );
     void stabilization_protocol();
+
+    void find_neighbors(std::vector<MemberEntry >& left, 
+                        std::vector<MemberEntry >& right);
+    bool is_node_in_ring(const MemberEntry& node);
+
+    void handle_neighbor_leave(const MemberEntry& node, int replica_type);
+    void remove_left_neighbor_replicas(int replica_type);
+    void send_right_neighbor_replicas(const MemberEntry& node, int replica_type);
 private:
     KVStore               m_store;
     KVStoreAsyncAccessor  m_store_acc;
@@ -124,8 +142,17 @@ private:
 
     std::vector<MemberEntry > m_ring;
 
+    // For stablization protocol
+    std::vector<MemberEntry > m_has_my_replicas;
+    std::vector<MemberEntry > m_has_replicas_of;
+
     boost::asio::io_service::strand m_ring_strand;
     boost::asio::io_service::strand m_clnt_strand;
+
+    // self address
+    int            m_self_af;                                                            
+    unsigned char  m_self_rawip[PL_IPv6_ADDR_LEN];                                       
+    unsigned short m_self_port; 
 };
 
 /*
