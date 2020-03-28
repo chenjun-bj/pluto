@@ -46,7 +46,7 @@ std::tuple<boost::tribool, Message* >
         return std::make_tuple(false, nullptr);
     }
 
-    bool    result;
+    boost::tribool result;
     size_t  msglen;
     MsgType msgtype;
     Message * pmsg = nullptr;
