@@ -4,28 +4,22 @@ PLUTO
 
 1.1 Requirement
 
-    a/ C/C++ compilier that supports c++11 standard
+    a/ Make
     
-    b/ Boost 1.62 and above
+    b/ curl -- to download required packages, such as gosu, boost.
+
+1.2 Build Docker Images
+
+    a/ Build centos docker image
+        cd build/images/dev-centos; make
+        
+    b/ Build kv docker image
+        cd build/images/kv-dev; make
     
-    c/ Boost build system
+1.3 Run kv docker to build
 
-1.2 Configure
-
-    a/ Copy build/boost.jam into $BOOST_BUILD/src/tools directory if not exist;
-    
-       The boost.jam is the toolset used to build programs that using pre-built boost libray, the file is distributed with BOOST source code under tools/build/src/contrib.
-       
-    b/ Edit/copy build/user-config.jam to your home directory, the file defines toolset (compiler and boost) for user, for Linux, you could use tool set 'gcc', for Mac, you could use 'darwin';
-    
-    c/ Edit boost-build.jam, to specify $BOOST_BUILD directory;
-
-1.3 Build
-
-    Goto src directory, issue 'b2' to build
-
-1.4 Build pass: Linux, Mac
-
+    Mount project home to '/u01/project/kv' in container to run kv-dev, like below:
+    docker run --rm -it -v /Users/chenjun/golang/src/user/pluto:/u01/project/kv kv-dev
 
 2. TODO
 
