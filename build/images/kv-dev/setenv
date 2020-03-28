@@ -1,0 +1,10 @@
+#
+#
+
+KVDEV__BUILD_BIN=${KVDEV__BUILD_BIN:-/u01/share/build}
+KVDEV__BOOST_BUILD_HOME=${KVDEV__BOOST_BUILD_HOME:-/opt/boost_build/share/boost-build}
+
+KVDEV__B2_PATH="/opt/boost_build/bin"
+PATH=$PATH:${KVDEV__B2_PATH}
+
+export PATH KVDEV__BOOST_BUILD_HOME KVDEV__BUILD_BIN
